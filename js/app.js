@@ -225,6 +225,7 @@
 
   function rendre() {
     var r = route(), html;
+    if (!DEMO && tablesManquantes().length) { app.innerHTML = vueInstallation(); return; }
     if (r.vue === 'reunion') html = vueReunion(r.id, r.onglet);
     else if (r.vue === 'nouvelle') html = vueNouvelle(r.depuis);
     else if (r.vue === 'actions') html = vueActions();
@@ -665,6 +666,92 @@
     });
   }
 
+
+  // ---------------------------------------------------------------------------
+  // Installation dans un document vide : création des tables, exemple facultatif
+  // ---------------------------------------------------------------------------
+
+  function choix(l) { return { type: 'Choice', widgetOptions: JSON.stringify({ choices: l }) }; }
+  function schema() {
+    return {
+      Reunions: [['Titre', { type: 'Text' }], ['Instance', choix(L.instances)], ['Date', { type: 'Date' }], ['Heure', { type: 'Text' }],
+        ['Duree_prevue', { type: 'Int' }], ['Lieu', { type: 'Text' }], ['Animation', { type: 'Text' }], ['Secretariat', { type: 'Text' }],
+        ['Participants', { type: 'Text' }], ['Excuses', { type: 'Text' }], ['Objectif', { type: 'Text' }], ['Statut', choix(L.statutsReunion)],
+        [NOM_COLONNE_CONFIG, { type: 'Text' }]],
+      Points: [['Reunion', { type: 'Ref:Reunions' }], ['Titre', { type: 'Text' }], ['Description', { type: 'Text' }], ['Type', choix(L.typesPoint)],
+        ['Duree', { type: 'Int' }], ['Porteur', { type: 'Text' }], ['Statut', choix(STATUTS_POINT)], ['Ordre', { type: 'Numeric' }],
+        ['Notes', { type: 'Text' }], ['Traite', { type: 'Bool' }],
+        ['Propose_par', { type: 'Text', isFormula: false, formula: 'user.Name' }],
+        ['Propose_le', { type: 'DateTime:Europe/Paris', isFormula: false, formula: 'NOW()' }]],
+      Decisions: [['Reunion', { type: 'Ref:Reunions' }], ['Point', { type: 'Ref:Points' }], ['Texte', { type: 'Text' }]],
+      Actions: [['Reunion', { type: 'Ref:Reunions' }], ['Point', { type: 'Ref:Points' }], ['Intitule', { type: 'Text' }], ['Responsable', { type: 'Text' }],
+        ['Echeance', { type: 'Date' }], ['Etat', choix(L.etatsAction)]]
+    };
+  }
+  function tablesManquantes() {
+    var ids = meta.tables.map(function (t) { return t.tableId; });
+    return TABLES.filter(function (t) { return ids.indexOf(t) < 0; });
+  }
+
+  function vueInstallation() {
+    var manquantes = tablesManquantes();
+    return '<h1 class="fr-h3">Installer l\'outil de réunion dans ce document</h1>' + blocAlerte() +
+      '<p>Le widget a besoin des tables ' + manquantes.map(function (t) { return '<code>' + t + '</code>'; }).join(', ') + '. Il peut les créer pour vous. Les tables existantes ne sont pas modifiées.</p>' +
+      '<p class="fr-text--sm">À faire par un propriétaire du document. Le widget doit avoir l\'accès complet au document.</p>' +
+      '<ul class="fr-btns-group fr-btns-group--inline-md"><li><button type="button" class="fr-btn" data-installer="vide">Créer les tables</button></li>' +
+      '<li><button type="button" class="fr-btn fr-btn--secondary" data-installer="exemple">Créer les tables avec un exemple fictif</button></li></ul>';
+  }
+
+  function installer(avecExemple) {
+    var sch = schema(), actions = [];
+    tablesManquantes().forEach(function (t) {
+      actions.push(['AddTable', t, sch[t].map(function (c) { return Object.assign({ id: c[0] }, c[1]); })]);
+    });
+    return grist.docApi.applyUserActions(actions).then(function () {
+      // Les références affichent un libellé lisible plutôt qu'un numéro.
+      return Promise.all([grist.docApi.fetchTable('_grist_Tables'), grist.docApi.fetchTable('_grist_Tables_column')]).then(function (m) {
+        var tabs = lignesDepuisColonnes(m[0]), cols = lignesDepuisColonnes(m[1]);
+        function col(t, c) { var tb = tabs.filter(function (x) { return x.tableId === t; })[0]; return tb && cols.filter(function (x) { return x.parentId === tb.id && x.colId === c; })[0]; }
+        var aff = [];
+        [['Points', 'Reunion', 'Reunions', 'Titre'], ['Decisions', 'Reunion', 'Reunions', 'Titre'], ['Decisions', 'Point', 'Points', 'Titre'],
+          ['Actions', 'Reunion', 'Reunions', 'Titre'], ['Actions', 'Point', 'Points', 'Titre']].forEach(function (r) {
+          var c = col(r[0], r[1]), v = col(r[2], r[3]);
+          if (c && v && !c.visibleCol) {
+            aff.push(['ModifyColumn', r[0], r[1], { visibleCol: v.id }]);
+            aff.push(['SetDisplayFormula', r[0], null, c.id, '$' + r[1] + '.' + r[3]]);
+          }
+        });
+        return aff.length ? grist.docApi.applyUserActions(aff) : null;
+      });
+    }).then(function () {
+      return avecExemple ? fetch('exemples/demo.json').then(function (r) { return r.json(); }).then(function (json) {
+        var auj = aujourdhui(), ex = [];
+        TABLES.forEach(function (t) {
+          var lignes = json[t] || [];
+          if (!lignes.length) return;
+          var cols = {};
+          sch[t].forEach(function (c) { if (c[0] !== NOM_COLONNE_CONFIG && !/^Propose_le$/.test(c[0])) cols[c[0]] = []; });
+          lignes.forEach(function (l) {
+            Object.keys(cols).forEach(function (k) {
+              var v = l[k];
+              if (typeof v === 'string' && /^J[+-]\d+$/.test(v)) v = auj + 86400 * (+v.slice(1));
+              if (v === undefined) v = sch[t].filter(function (c) { return c[0] === k; })[0][1].type === 'Bool' ? false : null;
+              cols[k].push(v);
+            });
+          });
+          ex.push(['BulkAddRecord', t, lignes.map(function (l) { return l.id; }), cols]);
+        });
+        return grist.docApi.applyUserActions(ex);
+      }) : null;
+    }).then(function () {
+      etat.alerte = { type: 'success', texte: 'Outil installé.' + (avecExemple ? ' L\'exemple fictif est chargé : supprimez ses lignes quand vous voulez.' : '') };
+      return charger();
+    }).then(rendre).catch(function (err) {
+      etat.alerte = { type: 'error', texte: 'Installation impossible : seuls les propriétaires du document peuvent créer des tables. (' + ((err && err.message) || err) + ')' };
+      rendre();
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Minuteur
   // ---------------------------------------------------------------------------
@@ -706,6 +793,7 @@
     if (a === 'enregistrer-reglages') { enregistrerReglages(); return; }
     if (a === 'annuler-reglages') { brouillonReglages = null; location.hash = '#/'; return; }
     if (a === 'annuler-suppression') { etat.suppression = null; rendre(); return; }
+    if (el.hasAttribute('data-installer')) { el.disabled = true; installer(el.getAttribute('data-installer') === 'exemple'); return; }
     if (el.hasAttribute('data-chrono-demarrer')) { etat.chrono = { point: num(el.getAttribute('data-chrono-demarrer')), debut: Date.now() }; rendre(); return; }
     if (el.hasAttribute('data-demander-suppression')) { etat.suppression = el.getAttribute('data-demander-suppression'); rendre(); return; }
     if (el.hasAttribute('data-point-statut')) {
