@@ -77,6 +77,7 @@ Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas.
 - [grist-catalogue](https://github.com/lab17bis/grist-catalogue) : catalogue public de fiches au DSFR.
 - [grist-graphique](https://github.com/lab17bis/grist-graphique) : tableaux de bord et graphiques au DSFR.
 - [grist-projet](https://github.com/lab17bis/grist-projet) : espace d'équipe pour gérer des projets.
+- [grist-management](https://github.com/lab17bis/grist-management) : espace de management visuel qui affiche la prochaine réunion et les actions ouvertes.
 
 Ils partagent les mêmes réglages d'en-tête et de pied de page.
 
