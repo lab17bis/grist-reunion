@@ -1,0 +1,290 @@
+{
+ "Reunions": [
+  {
+   "id": 1,
+   "Titre": "Réunion d'équipe hebdomadaire",
+   "Instance": "Réunion d'équipe",
+   "Date": "J-14",
+   "Heure": "09:30",
+   "Duree_prevue": 60,
+   "Lieu": "Salle 2.14",
+   "Animation": "Camille Exemple",
+   "Secretariat": "Dominique Martin",
+   "Participants": "Camille Exemple, Dominique Martin, Alex Dupont, Sacha Bernard, Lou Petit",
+   "Excuses": "",
+   "Objectif": "Faire le point sur les dossiers de la semaine.",
+   "Statut": "Compte rendu diffusé"
+  },
+  {
+   "id": 2,
+   "Titre": "Réunion d'équipe hebdomadaire",
+   "Instance": "Réunion d'équipe",
+   "Date": "J-7",
+   "Heure": "09:30",
+   "Duree_prevue": 60,
+   "Lieu": "Salle 2.14",
+   "Animation": "Camille Exemple",
+   "Secretariat": "Alex Dupont",
+   "Participants": "Camille Exemple, Dominique Martin, Alex Dupont, Sacha Bernard",
+   "Excuses": "Lou Petit",
+   "Objectif": "Préparer la rentrée des nouveaux arrivants et suivre le déménagement.",
+   "Statut": "Tenue"
+  },
+  {
+   "id": 3,
+   "Titre": "Réunion d'équipe hebdomadaire",
+   "Instance": "Réunion d'équipe",
+   "Date": "J+2",
+   "Heure": "09:30",
+   "Duree_prevue": 60,
+   "Lieu": "Salle 2.14",
+   "Animation": "Camille Exemple",
+   "Secretariat": "Sacha Bernard",
+   "Participants": "Camille Exemple, Dominique Martin, Alex Dupont, Sacha Bernard, Lou Petit",
+   "Excuses": "",
+   "Objectif": "",
+   "Statut": "En préparation"
+  },
+  {
+   "id": 4,
+   "Titre": "Comité de pilotage du projet d'accueil",
+   "Instance": "Comité de pilotage",
+   "Date": "J+16",
+   "Heure": "14:00",
+   "Duree_prevue": 90,
+   "Lieu": "Visioconférence",
+   "Animation": "Dominique Martin",
+   "Secretariat": "",
+   "Participants": "Direction, chefs de service, Dominique Martin, Camille Exemple",
+   "Excuses": "",
+   "Objectif": "Valider le calendrier de déploiement.",
+   "Statut": "En préparation"
+  }
+ ],
+ "Points": [
+  {
+   "id": 1,
+   "Reunion": 1,
+   "Titre": "Tour de table",
+   "Type": "Information",
+   "Duree": 15,
+   "Porteur": "Tous",
+   "Statut": "Retenu",
+   "Ordre": 1,
+   "Notes": "Charge de travail élevée sur les dossiers de fin d'année.",
+   "Traite": true,
+   "Propose_par": "Camille Exemple"
+  },
+  {
+   "id": 2,
+   "Reunion": 1,
+   "Titre": "Organisation du déménagement",
+   "Type": "Décision",
+   "Duree": 20,
+   "Porteur": "Dominique Martin",
+   "Statut": "Retenu",
+   "Ordre": 2,
+   "Notes": "Le déménagement aura lieu en deux temps. Les cartons seront fournis la semaine précédente.",
+   "Traite": true,
+   "Propose_par": "Dominique Martin"
+  },
+  {
+   "id": 3,
+   "Reunion": 1,
+   "Titre": "Formation au nouvel outil de gestion",
+   "Type": "Information",
+   "Duree": 10,
+   "Porteur": "Alex Dupont",
+   "Statut": "Reporté",
+   "Ordre": 3,
+   "Propose_par": "Alex Dupont"
+  },
+  {
+   "id": 4,
+   "Reunion": 2,
+   "Titre": "Tour de table",
+   "Type": "Information",
+   "Duree": 15,
+   "Porteur": "Tous",
+   "Statut": "Retenu",
+   "Ordre": 1,
+   "Notes": "RAS.",
+   "Traite": true,
+   "Propose_par": "Camille Exemple"
+  },
+  {
+   "id": 5,
+   "Reunion": 2,
+   "Titre": "Accueil des nouveaux arrivants",
+   "Type": "Échange",
+   "Duree": 25,
+   "Porteur": "Sacha Bernard",
+   "Statut": "Retenu",
+   "Ordre": 2,
+   "Notes": "Deux arrivées prévues. Besoin d'un livret d'accueil à jour et d'un binôme pour chaque arrivant.",
+   "Traite": true,
+   "Propose_par": "Sacha Bernard"
+  },
+  {
+   "id": 6,
+   "Reunion": 2,
+   "Titre": "Suivi du déménagement",
+   "Type": "Information",
+   "Duree": 10,
+   "Porteur": "Dominique Martin",
+   "Statut": "Retenu",
+   "Ordre": 3,
+   "Notes": "Planning confirmé.",
+   "Traite": true,
+   "Propose_par": "Dominique Martin"
+  },
+  {
+   "id": 7,
+   "Reunion": 2,
+   "Titre": "Formation au nouvel outil de gestion",
+   "Type": "Information",
+   "Duree": 10,
+   "Porteur": "Alex Dupont",
+   "Statut": "Reporté",
+   "Ordre": 4,
+   "Propose_par": "Alex Dupont"
+  },
+  {
+   "id": 8,
+   "Reunion": 3,
+   "Titre": "Tour de table",
+   "Type": "Information",
+   "Duree": 15,
+   "Porteur": "Tous",
+   "Statut": "Retenu",
+   "Ordre": 1,
+   "Propose_par": "Camille Exemple"
+  },
+  {
+   "id": 9,
+   "Reunion": 3,
+   "Titre": "Formation au nouvel outil de gestion",
+   "Type": "Information",
+   "Duree": 15,
+   "Porteur": "Alex Dupont",
+   "Statut": "Retenu",
+   "Ordre": 2,
+   "Propose_par": "Alex Dupont"
+  },
+  {
+   "id": 10,
+   "Reunion": 3,
+   "Titre": "Bilan de l'accueil des nouveaux arrivants",
+   "Type": "Échange",
+   "Duree": 20,
+   "Porteur": "Sacha Bernard",
+   "Statut": "Retenu",
+   "Ordre": 3,
+   "Propose_par": "Sacha Bernard"
+  },
+  {
+   "id": 11,
+   "Reunion": 3,
+   "Titre": "Organisation des congés de fin d'année",
+   "Type": "Décision",
+   "Duree": 15,
+   "Porteur": "Lou Petit",
+   "Statut": "Proposé",
+   "Description": "Il faut une présence minimale chaque jour entre le 22 et le 2.",
+   "Propose_par": "Lou Petit"
+  },
+  {
+   "id": 12,
+   "Reunion": 3,
+   "Titre": "Idées pour le séminaire de printemps",
+   "Type": "Échange",
+   "Duree": 20,
+   "Porteur": "Dominique Martin",
+   "Statut": "Proposé",
+   "Propose_par": "Dominique Martin"
+  },
+  {
+   "id": 13,
+   "Reunion": 4,
+   "Titre": "Point d'étape du projet",
+   "Type": "Information",
+   "Duree": 30,
+   "Porteur": "Dominique Martin",
+   "Statut": "Retenu",
+   "Ordre": 1,
+   "Propose_par": "Dominique Martin"
+  },
+  {
+   "id": 14,
+   "Reunion": 4,
+   "Titre": "Validation du calendrier de déploiement",
+   "Type": "Décision",
+   "Duree": 40,
+   "Porteur": "Camille Exemple",
+   "Statut": "Retenu",
+   "Ordre": 2,
+   "Propose_par": "Camille Exemple"
+  }
+ ],
+ "Decisions": [
+  {
+   "id": 1,
+   "Reunion": 1,
+   "Point": 2,
+   "Texte": "Le déménagement se fera en deux vagues, la première le lundi."
+  },
+  {
+   "id": 2,
+   "Reunion": 2,
+   "Point": 5,
+   "Texte": "Chaque nouvel arrivant aura un binôme pendant son premier mois."
+  }
+ ],
+ "Actions": [
+  {
+   "id": 1,
+   "Reunion": 1,
+   "Point": 2,
+   "Intitule": "Commander les cartons de déménagement",
+   "Responsable": "Dominique Martin",
+   "Echeance": "J-9",
+   "Etat": "Fait"
+  },
+  {
+   "id": 2,
+   "Reunion": 1,
+   "Point": 2,
+   "Intitule": "Informer les usagers de la fermeture du bureau",
+   "Responsable": "Lou Petit",
+   "Echeance": "J-3",
+   "Etat": "En cours"
+  },
+  {
+   "id": 3,
+   "Reunion": 2,
+   "Point": 5,
+   "Intitule": "Mettre à jour le livret d'accueil",
+   "Responsable": "Sacha Bernard",
+   "Echeance": "J+5",
+   "Etat": "En cours"
+  },
+  {
+   "id": 4,
+   "Reunion": 2,
+   "Point": 5,
+   "Intitule": "Désigner les binômes",
+   "Responsable": "Camille Exemple",
+   "Echeance": "J-1",
+   "Etat": "À faire"
+  },
+  {
+   "id": 5,
+   "Reunion": 2,
+   "Point": 6,
+   "Intitule": "Réserver la salle pour la première semaine",
+   "Responsable": "Alex Dupont",
+   "Echeance": "J+12",
+   "Etat": "À faire"
+  }
+ ]
+}

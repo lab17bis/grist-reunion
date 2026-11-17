@@ -1,0 +1,49 @@
+"""Tests de bout en bout du mode démonstration : python3 tests/test_reunion.py
+Variables : CHROME (chemin du navigateur), URL (par défaut http://localhost:8770/)."""
+import os, sys
+from playwright.sync_api import sync_playwright
+URL = os.environ.get('URL', 'http://localhost:8770/')
+ok = ko = 0
+def verifier(nom, cond):
+    global ok, ko
+    print(('OK   ' if cond else 'ÉCHEC ') + nom); ok += cond; ko += (not cond)
+with sync_playwright() as p:
+    b = p.chromium.launch(executable_path=os.environ.get('CHROME') or None, args=['--no-sandbox'])
+    pg = b.new_page(viewport={'width': 1280, 'height': 900}); erreurs = []
+    pg.on('pageerror', lambda e: erreurs.append(str(e)))
+    pg.goto(URL); pg.wait_for_selector('.rn-cartes')
+    verifier('accueil : réunions à venir', pg.locator('.rn-cartes').first.locator('.fr-card').count() == 2)
+    pg.goto(URL + '#/reunion/3/ordre'); pg.wait_for_selector('.rn-odj')
+    verifier('ordre du jour : 3 points retenus', pg.locator('.rn-odj > li').count() == 3)
+    verifier('horaires calculés', pg.locator('.rn-point__heure').nth(1).inner_text() == '09:45')
+    verifier('propositions affichées', pg.locator('.rn-proposition').count() == 2)
+    verifier('actions précédentes ouvertes', pg.get_by_text('Mettre à jour le livret').count() >= 1)
+    pg.locator('.rn-proposition').first.get_by_role('button', name='Retenir').click()
+    verifier('retenir une proposition', pg.locator('.rn-odj > li').count() == 4)
+    pg.get_by_role('button', name='Descendre').first.click()
+    verifier('déplacer un point', pg.locator('.rn-odj .rn-point__titre').first.inner_text() == 'Formation au nouvel outil de gestion')
+    pg.fill('#p-titre-3', 'Point de test'); pg.locator('form[data-form=point] button[type=submit]').click()
+    verifier('proposer un point', pg.locator('.rn-proposition', has_text='Point de test').count() == 1)
+    pg.goto(URL + '#/reunion/3/seance'); pg.wait_for_selector('.rn-seance-point')
+    pid = pg.locator('[data-notes]').first.get_attribute('data-notes')
+    pg.fill('#notes-' + pid, 'Notes de test'); pg.locator('#notes-' + pid).blur()
+    pg.fill('#dec-' + pid + '-t', 'Décision de test'); pg.locator('#dec-' + pid + '-t').press('Enter')
+    pg.fill('#act-' + pid + '-i', 'Action de test'); pg.fill('#act-' + pid + '-r', 'Lou Petit'); pg.locator('#act-' + pid + '-i').press('Enter')
+    pg.locator('[data-chrono-demarrer]').first.click(); pg.wait_for_timeout(1200)
+    verifier('minuteur', 'min' in pg.locator('.rn-chrono__temps').inner_text())
+    pg.goto(URL + '#/reunion/3/cr'); pg.wait_for_selector('.rn-cr')
+    cr = pg.locator('.rn-cr').inner_text()
+    verifier('compte rendu : notes, décision, action', 'Notes de test' in cr and 'Décision de test' in cr and 'Action de test' in cr)
+    pg.goto(URL + '#/actions'); pg.wait_for_selector('h1')
+    verifier('suivi des actions : en retard', pg.get_by_role('heading', name='En retard').count() == 1)
+    pg.select_option('#f-resp', 'Lou Petit')
+    verifier('filtre responsable', pg.locator('tbody tr').count() == 2)
+    pg.goto(URL + '#/nouvelle/2'); pg.wait_for_selector('form[data-form=nouvelle]')
+    pg.fill('#n-date', '2030-01-10'); pg.locator('form[data-form=nouvelle] button[type=submit]').click()
+    pg.wait_for_selector('.rn-proposition')
+    verifier('réunion suivante : point reporté proposé', pg.locator('.rn-proposition').count() == 1)
+    pg.screenshot(path='/tmp/reunion.png', full_page=True)
+    verifier('aucune erreur JavaScript', not erreurs)
+    if erreurs: print(erreurs)
+    b.close()
+print(f'{ok} réussis, {ko} échoués'); sys.exit(1 if ko else 0)
