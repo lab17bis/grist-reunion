@@ -40,7 +40,8 @@ body { background: var(--background-default-grey); color: var(--text-default-gre
 .rn-point__heure { font-weight: 700; min-width: 3.25rem; color: var(--text-title-blue-france); }
 .rn-point__corps { flex: 1; }
 .rn-point__titre { font-weight: 700; margin-bottom: .25rem; }
-.rn-odj > li::before { content: none; display: none; }
+.rn-odj > li::before, .rn-odj > li::marker { content: none !important; display: none !important; }
+.rn-odj { --ol-content: none; --li-bottom: 0; }
 .rn-odj > li { padding-left: 1rem; }
 .rn-point__meta { font-size: .875rem; color: var(--text-mention-grey); margin-bottom: .25rem; }
 .rn-point__meta .fr-badge { margin-right: .25rem; vertical-align: middle; }
