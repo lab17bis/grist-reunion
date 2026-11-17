@@ -23,7 +23,7 @@ Démonstration avec des données fictives (rien n'est enregistré) : <https://la
 
 1. **Créer un document Grist vide** (ou ouvrir un document existant).
 2. **Ajouter le widget** : *Ajouter › Ajouter une page › Personnalisé*, sur n'importe quelle table. Dans le panneau de droite, choisissez *URL personnalisée*, saisissez `https://lab17bis.github.io/grist-reunion/` et donnez l'**accès complet au document**.
-3. **Installer** : le widget propose *Créer les tables*, ou *Créer les tables avec un exemple fictif* pour essayer. Il crée `Reunions`, `Points`, `Decisions` et `Actions` sans toucher aux tables existantes. À faire par un propriétaire du document.
+3. **Installer** : le widget propose *Créer les tables*, ou *Créer les tables avec un exemple fictif* pour essayer. Il crée `Reunions`, `Points`, `Decisions` et `Actions_reunion` sans toucher aux tables existantes. À faire par un propriétaire du document.
 
 Ensuite, invitez l'équipe dans le document (*Partager*), en éditeur pour proposer des points et prendre des notes. Pour plus de clarté, vous pouvez rattacher la vue personnalisée à la table `Reunions` et supprimer la table de départ.
 
@@ -40,9 +40,9 @@ Les réglages sont enregistrés en JSON dans la **description de la colonne `Con
 | `Reunions` | `Titre`, `Instance` (choix), `Date` (date), `Heure` (texte, « 09:30 »), `Duree_prevue` (entier, minutes), `Lieu`, `Animation`, `Secretariat`, `Participants`, `Excuses`, `Objectif`, `Statut` (choix), `Config_reunion` |
 | `Points` | `Reunion` (référence), `Titre`, `Description`, `Type` (choix), `Duree` (entier, minutes), `Porteur`, `Statut` (Proposé, Retenu, Reporté, Écarté), `Ordre` (nombre), `Notes`, `Traite` (case à cocher), `Propose_par` et `Propose_le` (remplis par Grist à la création : `user.Name` et `NOW()`) |
 | `Decisions` | `Reunion` (référence), `Point` (référence), `Texte` |
-| `Actions` | `Reunion` (référence), `Point` (référence), `Intitule`, `Responsable` (texte), `Echeance` (date), `Etat` (choix) |
+| `Actions_reunion` | `Reunion` (référence), `Point` (référence), `Intitule`, `Responsable` (texte), `Echeance` (date), `Etat` (choix) |
 
-Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas.
+Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas. La table des actions s'appelle `Actions_reunion` pour pouvoir partager un document avec [grist-projet](https://github.com/lab17bis/grist-projet), qui a sa propre table `Actions`.
 
 ## Le reprendre et l'adapter
 

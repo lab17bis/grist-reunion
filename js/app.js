@@ -28,7 +28,9 @@
   var COULEUR_STATUT = { 'En préparation': 'new', 'Ordre du jour arrêté': 'info', 'Tenue': 'warning', 'Compte rendu diffusé': 'success' };
 
   var NOM_COLONNE_CONFIG = 'Config_reunion';
-  var TABLES = ['Reunions', 'Points', 'Decisions', 'Actions'];
+  var TABLES = ['Reunions', 'Points', 'Decisions', 'Actions_reunion'];
+  // Nom distinct de la table Actions de grist-projet : les deux outils peuvent partager un document.
+  var T_ACTIONS = 'Actions_reunion';
   var L = {};            // listes en vigueur
   var reglages = {};
   var DUREE_DEFAUT = 10;
@@ -154,7 +156,7 @@
       .sort(function (a, b) { return (a.Ordre || 0) - (b.Ordre || 0) || a.id - b.id; });
   }
   function decisionsDe(rid, pid) { return data.Decisions.filter(function (d) { return num(d.Reunion) === rid && (pid === undefined || num(d.Point) === pid); }); }
-  function actionsDe(rid, pid) { return data.Actions.filter(function (a) { return num(a.Reunion) === rid && (pid === undefined || num(a.Point) === pid); }); }
+  function actionsDe(rid, pid) { return data[T_ACTIONS].filter(function (a) { return num(a.Reunion) === rid && (pid === undefined || num(a.Point) === pid); }); }
   function actionOuverte(a) { return a.Etat !== 'Fait' && a.Etat !== 'Abandonné'; }
 
   // Actions encore ouvertes des réunions précédentes de la même instance.
@@ -162,7 +164,7 @@
     var avant = data.Reunions.filter(function (x) {
       return x.id !== r.id && (x.Instance || '') === (r.Instance || '') && (x.Date || 0) <= (r.Date || 9e12);
     }).map(function (x) { return x.id; });
-    return data.Actions.filter(function (a) { return avant.indexOf(num(a.Reunion)) >= 0 && actionOuverte(a); })
+    return data[T_ACTIONS].filter(function (a) { return avant.indexOf(num(a.Reunion)) >= 0 && actionOuverte(a); })
       .sort(function (a, b) { return (a.Echeance || 9e12) - (b.Echeance || 9e12); });
   }
 
@@ -486,7 +488,7 @@
   function datalistPersonnes(r) {
     var noms = {};
     String(r.Participants || '').split(/[,\n;]+/).forEach(function (n) { n = n.trim(); if (n) noms[n] = 1; });
-    data.Actions.forEach(function (a) { if (a.Responsable) noms[a.Responsable] = 1; });
+    data[T_ACTIONS].forEach(function (a) { if (a.Responsable) noms[a.Responsable] = 1; });
     return '<datalist id="rn-personnes">' + Object.keys(noms).sort().map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>';
   }
 
@@ -581,8 +583,8 @@
   function vueActions() {
     var auj = aujourdhui(), semaine = auj + 7 * 86400;
     var responsables = {};
-    data.Actions.forEach(function (a) { if (a.Responsable) responsables[a.Responsable] = 1; });
-    var ouvertes = data.Actions.filter(function (a) {
+    data[T_ACTIONS].forEach(function (a) { if (a.Responsable) responsables[a.Responsable] = 1; });
+    var ouvertes = data[T_ACTIONS].filter(function (a) {
       var r = idx.Reunions[num(a.Reunion)];
       if (!actionOuverte(a)) return false;
       if (etat.filtreResponsable && a.Responsable !== etat.filtreResponsable) return false;
@@ -614,7 +616,7 @@
     ['instances', 'Instances (types de réunion)', 'Reunions', 'Instance'],
     ['statutsReunion', 'Étapes d\'une réunion', 'Reunions', 'Statut'],
     ['typesPoint', 'Types de points', 'Points', 'Type'],
-    ['etatsAction', 'États des actions', 'Actions', 'Etat']
+    ['etatsAction', 'États des actions', 'Actions_reunion', 'Etat']
   ];
 
   function vueReglages() {
@@ -684,7 +686,7 @@
         ['Propose_par', { type: 'Text', isFormula: false, formula: 'user.Name' }],
         ['Propose_le', { type: 'DateTime:Europe/Paris', isFormula: false, formula: 'NOW()' }]],
       Decisions: [['Reunion', { type: 'Ref:Reunions' }], ['Point', { type: 'Ref:Points' }], ['Texte', { type: 'Text' }]],
-      Actions: [['Reunion', { type: 'Ref:Reunions' }], ['Point', { type: 'Ref:Points' }], ['Intitule', { type: 'Text' }], ['Responsable', { type: 'Text' }],
+      Actions_reunion: [['Reunion', { type: 'Ref:Reunions' }], ['Point', { type: 'Ref:Points' }], ['Intitule', { type: 'Text' }], ['Responsable', { type: 'Text' }],
         ['Echeance', { type: 'Date' }], ['Etat', choix(L.etatsAction)]]
     };
   }
@@ -714,7 +716,7 @@
         function col(t, c) { var tb = tabs.filter(function (x) { return x.tableId === t; })[0]; return tb && cols.filter(function (x) { return x.parentId === tb.id && x.colId === c; })[0]; }
         var aff = [];
         [['Points', 'Reunion', 'Reunions', 'Titre'], ['Decisions', 'Reunion', 'Reunions', 'Titre'], ['Decisions', 'Point', 'Points', 'Titre'],
-          ['Actions', 'Reunion', 'Reunions', 'Titre'], ['Actions', 'Point', 'Points', 'Titre']].forEach(function (r) {
+          [T_ACTIONS, 'Reunion', 'Reunions', 'Titre'], [T_ACTIONS, 'Point', 'Points', 'Titre']].forEach(function (r) {
           var c = col(r[0], r[1]), v = col(r[2], r[3]);
           if (c && v && !c.visibleCol) {
             aff.push(['ModifyColumn', r[0], r[1], { visibleCol: v.id }]);
@@ -827,7 +829,7 @@
     if (el.hasAttribute('data-confirmer-reunion')) {
       var rid = num(el.getAttribute('data-confirmer-reunion'));
       var acts = [];
-      ['Decisions', 'Actions', 'Points'].forEach(function (t) { data[t].forEach(function (l) { if (num(l.Reunion) === rid) acts.push(['RemoveRecord', t, l.id]); }); });
+      ['Decisions', T_ACTIONS, 'Points'].forEach(function (t) { data[t].forEach(function (l) { if (num(l.Reunion) === rid) acts.push(['RemoveRecord', t, l.id]); }); });
       acts.push(['RemoveRecord', 'Reunions', rid]);
       etat.suppression = null;
       executer(acts, 'Réunion supprimée.', function () { location.hash = '#/'; });
@@ -851,7 +853,7 @@
       return;
     }
     if (el.hasAttribute('data-traite')) { executer([['UpdateRecord', 'Points', num(el.getAttribute('data-traite')), { Traite: el.checked }]]); return; }
-    if (el.hasAttribute('data-etat-action')) { executer([['UpdateRecord', 'Actions', num(el.getAttribute('data-etat-action')), { Etat: el.value }]], 'État de l\'action mis à jour.'); return; }
+    if (el.hasAttribute('data-etat-action')) { executer([['UpdateRecord', T_ACTIONS, num(el.getAttribute('data-etat-action')), { Etat: el.value }]], 'État de l\'action mis à jour.'); return; }
     if (el.hasAttribute('data-statut')) { executer([['UpdateRecord', 'Reunions', num(el.getAttribute('data-statut')), { Statut: el.value }]], 'Étape mise à jour.'); }
   });
 
@@ -902,7 +904,7 @@
     if (type === 'action') {
       cle = 'act-' + pid; b = brouillon(cle);
       if (!String(b.Intitule || '').trim()) { etat.alerte = { type: 'error', texte: 'Décrivez l\'action à mener.' }; rendre(); return; }
-      executer([['AddRecord', 'Actions', null, { Reunion: rid, Point: pid, Intitule: String(b.Intitule).trim(), Responsable: b.Responsable || '',
+      executer([['AddRecord', T_ACTIONS, null, { Reunion: rid, Point: pid, Intitule: String(b.Intitule).trim(), Responsable: b.Responsable || '',
         Echeance: saisieVersDate(b.Echeance), Etat: L.etatsAction[0] }]], 'Action ajoutée.', function () { delete etat.brouillons[cle]; });
     }
   });
@@ -957,7 +959,7 @@
   appliquerTheme();
   function erreurChargement(err) {
     app.innerHTML = '<div class="fr-alert fr-alert--error"><h2 class="fr-alert__title">Chargement impossible</h2>' +
-      '<p>Vérifiez que le widget a l\'accès « Accès complet au document » et que les tables Reunions, Points, Decisions et Actions existent. Détail : ' + esc((err && err.message) || err) + '</p></div>';
+      '<p>Vérifiez que le widget a l\'accès « Accès complet au document » et que les tables Reunions, Points, Decisions et Actions_reunion existent. Détail : ' + esc((err && err.message) || err) + '</p></div>';
   }
   document.getElementById('rn-actualiser').addEventListener('click', function () { charger().then(rendre).catch(erreurChargement); });
 
