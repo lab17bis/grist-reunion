@@ -19,14 +19,13 @@ L'outil s'utilise **dans Grist** : chaque personne qui propose un point ou prend
 
 Démonstration avec des données fictives (rien n'est enregistré) : <https://lab17bis.github.io/grist-reunion/>
 
-## Le brancher en 5 minutes
+## Le brancher en 3 minutes
 
-1. **Partir du modèle** : téléchargez [`modele/modele-grist-reunion.grist`](modele/modele-grist-reunion.grist), puis importez-le dans Grist (*Ajouter › Importer un document*). Il contient les tables vides et la page du widget.
-2. **Vérifier le widget** : la page *Réunions* contient une vue *Personnalisée* sur la table `Reunions`, avec l'adresse `https://lab17bis.github.io/grist-reunion/` et l'**accès complet au document**.
-3. **Régler** : en bas du widget, ouvrez *Réglages*, puis enregistrez. À faire par un propriétaire du document.
-4. **Inviter** l'équipe dans le document (*Partager*), en éditeur pour proposer des points et prendre des notes.
+1. **Créer un document Grist vide** (ou ouvrir un document existant).
+2. **Ajouter le widget** : *Ajouter › Ajouter une page › Personnalisé*, sur n'importe quelle table. Dans le panneau de droite, choisissez *URL personnalisée*, saisissez `https://lab17bis.github.io/grist-reunion/` et donnez l'**accès complet au document**.
+3. **Installer** : le widget propose *Créer les tables*, ou *Créer les tables avec un exemple fictif* pour essayer. Il crée `Reunions`, `Points`, `Decisions` et `Actions` sans toucher aux tables existantes. À faire par un propriétaire du document.
 
-Pour partir d'un document existant, créez les tables décrites plus bas, ajoutez une vue *Personnalisée* sur `Reunions` avec l'adresse du widget et l'accès complet.
+Ensuite, invitez l'équipe dans le document (*Partager*), en éditeur pour proposer des points et prendre des notes. Pour plus de clarté, vous pouvez rattacher la vue personnalisée à la table `Reunions` et supprimer la table de départ.
 
 ## Le régler
 
@@ -47,7 +46,7 @@ Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas.
 
 ## Le reprendre et l'adapter
 
-- **L'utiliser tel quel** : importez le modèle. Aucune installation n'est nécessaire.
+- **L'utiliser tel quel** : ajoutez le widget dans Grist. Aucune installation n'est nécessaire.
 - **L'héberger chez vous** : copiez le dépôt (*Fork*), activez GitHub Pages ou déposez les fichiers sur un serveur web statique, puis changez l'adresse du widget dans Grist. Aucune compilation.
 - **Modifier le code** :
 
@@ -56,7 +55,6 @@ Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas.
 | `index.html`, `js/app.js`, `css/app.css` | L'application : réunions, ordre du jour, séance, compte rendu, suivi des actions, réglages |
 | `commun/` | En-tête et pied de page configurables, communs aux outils `grist-*` |
 | `exemples/demo.json` | Jeu d'exemple inventé, utilisé par la démonstration (dates relatives, « J+2 ») |
-| `modele/` | Modèle de document Grist sans données, à importer |
 | `tests/` | Tests automatisés de l'interface : `python3 tests/test_reunion.py` (Playwright) |
 | `vendor/dsfr/` | DSFR 1.15.4, embarqué pour ne dépendre d'aucun service externe |
 
