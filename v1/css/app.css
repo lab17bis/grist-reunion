@@ -1,0 +1,95 @@
+/* Mise en page propre à grist-reunion. Les composants viennent du DSFR. */
+
+body { background: var(--background-default-grey); color: var(--text-default-grey); min-height: 100vh; display: flex; flex-direction: column; }
+.rn-marge { padding-left: 1.5rem; padding-right: 1.5rem; }
+#rn-app { flex: 1; padding-top: 1rem; padding-bottom: 2rem; }
+#rn-app:focus { outline: none; }
+.rn-evitement { position: absolute; left: -999px; }
+.rn-evitement:focus { left: 1rem; top: .5rem; z-index: 10; background: var(--background-default-grey); }
+
+.rn-nav { margin-bottom: 1rem; }
+.rn-titre-ligne { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+.rn-titre-ligne h1 { margin-bottom: .25rem; }
+.rn-meta { color: var(--text-mention-grey); font-size: .875rem; margin-bottom: .5rem; }
+.rn-compte { color: var(--text-mention-grey); font-weight: 400; }
+.rn-requis { color: var(--text-mention-grey); font-weight: 400; font-size: .75rem; }
+.rn-alerte { margin-bottom: 1rem; }
+.rn-badges { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0; padding: 0; list-style: none; }
+.rn-badges li { margin: 0; padding: 0; }
+.rn-statut .fr-select-group { margin: 0; min-width: 14rem; }
+.rn-onglets { margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-default-grey); }
+
+.rn-filtres { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 18rem)); gap: 1rem; margin-bottom: 1.5rem; }
+.rn-filtres .fr-select-group { margin: 0; }
+.rn-cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1.5rem; }
+.rn-cartes .fr-card { height: 100%; }
+
+.rn-form { max-width: 60rem; }
+.rn-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0 1.5rem; }
+.rn-grille .rn-large { grid-column: 1 / -1; }
+
+/* Ordre du jour */
+.rn-colonnes { display: grid; grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); gap: 2rem; }
+@media (max-width: 62em) { .rn-colonnes { grid-template-columns: 1fr; } }
+.rn-col-laterale { background: var(--background-alt-grey); padding: 1rem 1.25rem; align-self: start; }
+.rn-objectif { border-left: 4px solid var(--border-plain-blue-france); padding-left: .75rem; }
+.rn-total { font-weight: 700; }
+.rn-odj { list-style: none; margin: 0; padding: 0; counter-reset: point; }
+.rn-point { border: 1px solid var(--border-default-grey); background: var(--background-default-grey); margin-bottom: .75rem; padding: .75rem 1rem; counter-increment: point; }
+.rn-point__tete { display: flex; gap: 1rem; align-items: flex-start; }
+.rn-point__heure { font-weight: 700; min-width: 3.25rem; color: var(--text-title-blue-france); }
+.rn-point__corps { flex: 1; }
+.rn-point__titre { font-weight: 700; margin-bottom: .25rem; }
+.rn-odj > li::before, .rn-odj > li::marker { content: none !important; display: none !important; }
+.rn-odj { --ol-content: none; --li-bottom: 0; }
+.rn-odj > li { padding-left: 1rem; }
+.rn-point__meta { font-size: .875rem; color: var(--text-mention-grey); margin-bottom: .25rem; }
+.rn-point__meta .fr-badge { margin-right: .25rem; vertical-align: middle; }
+.rn-point__desc { font-size: .875rem; margin: .25rem 0 0; }
+.rn-point__outils { display: flex; gap: .25rem; list-style: none; margin: 0; padding: 0; }
+.rn-point__outils li { padding: 0; }
+.rn-proposition { background: var(--background-default-grey); border-left: 4px solid var(--border-plain-info); padding: .75rem; margin-bottom: .75rem; }
+.rn-liste-simple { list-style: none; padding: 0; }
+.rn-liste-simple li { padding: .25rem 0; border-bottom: 1px solid var(--border-default-grey); }
+
+/* Séance */
+.rn-seance-point { border: 1px solid var(--border-default-grey); padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+.rn-seance-point.rn-actif { border: 2px solid var(--border-plain-blue-france); }
+.rn-seance-point.rn-traite { background: var(--background-alt-grey); }
+.rn-seance-point__tete { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
+.rn-seance-point__tete h2 { margin: 0; }
+.rn-chrono { display: flex; align-items: center; gap: .75rem; }
+.rn-chrono__temps { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-title-blue-france); }
+.rn-chrono__temps--depasse { color: var(--text-default-error); }
+.rn-seance-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1.5rem; }
+.rn-ajout { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: flex-end; }
+.rn-ajout .fr-input-group { flex: 1 1 12rem; margin: 0; }
+.rn-seance-point__pied { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1rem; }
+.rn-table { margin-bottom: 1rem; }
+.rn-table .fr-table__content table { width: 100%; }
+.rn-select-etat { margin: 0; min-width: 8rem; }
+
+/* Suivi des actions */
+.rn-chiffres { display: flex; flex-wrap: wrap; gap: 1rem; list-style: none; padding: 0; margin: 0 0 1rem; }
+.rn-chiffres li { border: 1px solid var(--border-default-grey); padding: .5rem 1rem; }
+.rn-chiffres__n { font-size: 1.5rem; font-weight: 700; color: var(--text-title-blue-france); margin-right: .25rem; }
+
+/* Compte rendu */
+.rn-cr { max-width: 52rem; border: 1px solid var(--border-default-grey); padding: 2rem; background: var(--background-default-grey); }
+.rn-cr__infos { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .5rem 1.5rem; margin-bottom: 1.5rem; }
+.rn-cr__infos dt { font-weight: 700; font-size: .875rem; }
+.rn-cr__infos dd { margin: 0; padding: 0; }
+.rn-cr__infos dt { padding: 0; }
+.rn-cr__point { margin-bottom: 1.25rem; }
+.rn-outils-cr { margin-bottom: 1rem; }
+
+.rn-pied { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; padding-top: .75rem; padding-bottom: .75rem; border-top: 1px solid var(--border-default-grey); font-size: .875rem; }
+.rn-pied__liens { display: flex; align-items: center; gap: 1rem; }
+.rn-pied__theme { display: flex; align-items: center; gap: .5rem; }
+.rn-pied__theme .fr-label, .rn-pied__theme .fr-select { margin: 0; width: auto; }
+
+@media print {
+  .rn-ecran, .rn-nav, #entete, #pied, .rn-pied { display: none !important; }
+  .rn-cr { border: 0; padding: 0; max-width: none; }
+  #rn-app { padding: 0; }
+}

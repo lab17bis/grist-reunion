@@ -17,12 +17,12 @@ Une **instance** regroupe les réunions d'une même série (réunion d'équipe, 
 
 L'outil s'utilise **dans Grist** : chaque personne qui propose un point ou prend des notes doit être connectée au document. Pour recueillir des propositions de personnes qui n'ont pas accès au document, branchez [grist-questionnaire](https://github.com/lab17bis/grist-questionnaire) sur la table `Points`.
 
-Démonstration avec des données fictives (rien n'est enregistré) : <https://lab17bis.github.io/grist-reunion/>
+Démonstration avec des données fictives (rien n'est enregistré) : <https://lab17bis.github.io/grist-reunion/v1/>
 
 ## Le brancher en 3 minutes
 
 1. **Créer un document Grist vide** (ou ouvrir un document existant).
-2. **Ajouter le widget** : *Ajouter › Ajouter une page › Personnalisé*, sur n'importe quelle table. Dans le panneau de droite, choisissez *URL personnalisée*, saisissez `https://lab17bis.github.io/grist-reunion/` et donnez l'**accès complet au document**.
+2. **Ajouter le widget** : *Ajouter › Ajouter une page › Personnalisé*, sur n'importe quelle table. Dans le panneau de droite, choisissez *URL personnalisée*, saisissez `https://lab17bis.github.io/grist-reunion/v1/` et donnez l'**accès complet au document**.
 3. **Installer** : le widget propose *Créer les tables*, ou *Créer les tables avec un exemple fictif* pour essayer. Il crée `Reunions`, `Points`, `Decisions` et `Actions_reunion` sans toucher aux tables existantes. À faire par un propriétaire du document.
 
 Ensuite, invitez l'équipe dans le document (*Partager*), en éditeur pour proposer des points et prendre des notes. Pour plus de clarté, vous pouvez rattacher la vue personnalisée à la table `Reunions` et supprimer la table de départ.
@@ -52,6 +52,8 @@ Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas.
 
 | Dossier ou fichier | Rôle |
 | --- | --- |
+| `v1/` | Version stable figée, servie à l'adresse `…/v1/`. Ne pas modifier à la main. |
+| `outils/figer-version.sh` | Copie la version en cours dans `vN/`. |
 | `index.html`, `js/app.js`, `css/app.css` | L'application : réunions, ordre du jour, séance, compte rendu, suivi des actions, réglages |
 | `commun/` | En-tête et pied de page configurables, communs aux outils `grist-*` |
 | `exemples/demo.json` | Jeu d'exemple inventé, utilisé par la démonstration (dates relatives, « J+2 ») |
@@ -70,6 +72,26 @@ Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas.
 - Deux personnes qui modifient les notes du même point en même temps : la dernière enregistrée l'emporte.
 - Le responsable d'une action est un texte libre, pas une référence à un annuaire.
 - Aucun audit RGAA n'a été mené.
+
+## Version stable et version en cours
+
+Dans Grist, utilisez l'adresse de la **version stable** : `https://lab17bis.github.io/grist-reunion/v1/`. Elle ne change que pour corriger un défaut, sans toucher aux tables ni aux réglages. Une évolution qui les modifie paraît sous une nouvelle adresse (`v2/`) : les documents déjà en service restent sur `v1/` tant que vous ne changez pas l'adresse du widget.
+
+L'adresse sans numéro (`https://lab17bis.github.io/grist-reunion/`) suit la version en cours de développement. Elle sert à essayer les nouveautés ; ne l'utilisez pas pour un document en service.
+
+Pour figer une nouvelle version stable après des tests réussis : `sh outils/figer-version.sh 1` (ou `2` pour une version qui change les tables), puis publiez le dépôt.
+
+## Données partagées avec les autres outils
+
+Plusieurs outils de la même famille peuvent travailler dans un même document Grist. Ils suivent une règle commune pour ne pas dupliquer les données :
+
+- **Une seule table `Personnes`** par document. Colonne commune : `Nom`. Colonnes facultatives reconnues par tous : `Email` et `Structure` (référence à `Structures`). Un outil lit cette table si elle existe et la crée seulement si elle manque. Il n'y ajoute que ses propres colonnes.
+- **Une seule table `Structures`** pour les équipes, services ou établissements : `Nom`, `Sigle`, `Type`, `Parent` (structure de rattachement).
+- **Aucun outil ne supprime ni ne renomme** une table ou une colonne qu'il n'a pas créée.
+- **Les autres tables portent des noms propres à chaque outil**, pour éviter les collisions (par exemple `Actions` pour grist-projet, `Actions_reunion` pour grist-reunion). Les réglages sont rangés dans la description d'une colonne technique propre à l'outil (`Config_…`).
+- **Identifier la personne connectée** : un widget ne connaît pas l'adresse de la personne connectée. Les colonnes « créé par » utilisent une formule `user.Email` calculée à la création. Seul un outil qui doit relier la personne connectée à sa fiche crée la table `Comptes`.
+
+Ce que fait cet outil : Il ne crée pas de table de personnes. Si `Personnes` existe, ses noms sont proposés dans les champs Animation, Secrétariat, Participants, Qui présente ? et Responsable.
 
 ## Espaces clés en main
 

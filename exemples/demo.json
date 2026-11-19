@@ -286,5 +286,35 @@
    "Echeance": "J+12",
    "Etat": "À faire"
   }
+ ],
+ "Personnes": [
+  {
+   "id": 1,
+   "Nom": "Alex Dupont"
+  },
+  {
+   "id": 2,
+   "Nom": "Camille Exemple"
+  },
+  {
+   "id": 3,
+   "Nom": "Dominique Martin"
+  },
+  {
+   "id": 4,
+   "Nom": "Lou Petit"
+  },
+  {
+   "id": 5,
+   "Nom": "Sacha Bernard"
+  },
+  {
+   "id": 6,
+   "Nom": "Noa Laurent"
+  },
+  {
+   "id": 7,
+   "Nom": "Eden Michel"
+  }
  ]
 }

@@ -123,6 +123,7 @@
           return c;
         });
       });
+      data.Personnes = json.Personnes || [];
     });
   }
 
@@ -138,7 +139,9 @@
         try { r = c && c.description ? JSON.parse(c.description) : {}; } catch (e) { r = {}; }
         appliquerReglages(r);
       }).catch(function () { appliquerReglages({}); });
-    return Promise.all([config].concat(TABLES.map(function (t) {
+    // Table Personnes partagée avec les autres outils (facultative) : ses noms sont proposés à la saisie.
+    var personnes = grist.docApi.fetchTable('Personnes').then(function (c) { data.Personnes = lignesDepuisColonnes(c); }).catch(function () { data.Personnes = []; });
+    return Promise.all([config, personnes].concat(TABLES.map(function (t) {
       return grist.docApi.fetchTable(t).then(function (c) { data[t] = lignesDepuisColonnes(c); }).catch(function () { data[t] = []; });
     })));
   }
@@ -233,6 +236,8 @@
     else if (r.vue === 'actions') html = vueActions();
     else if (r.vue === 'reglages') html = vueReglages();
     else html = vueAccueil();
+    // Une seule liste de suggestions de noms par écran.
+    if (html.indexOf('list="rn-personnes"') >= 0 && html.indexOf('id="rn-personnes"') < 0) html += datalistPersonnes(r.id ? (idx.Reunions || {})[r.id] : null);
     app.innerHTML = html;
     if (r.vue === 'reglages') monterReglages();
     majChrono();
@@ -336,12 +341,22 @@
       champ(p + '-heure', 'Heure de début', b.Heure, { type: 'time', attrs: a('Heure') }) +
       champ(p + '-duree', 'Durée prévue (minutes)', b.Duree_prevue || '', { type: 'number', attrs: a('Duree_prevue') + ' min="0" step="5"' }) +
       champ(p + '-lieu', 'Lieu ou lien de visioconférence', b.Lieu, { attrs: a('Lieu') }) +
-      champ(p + '-anim', 'Animation', b.Animation, { attrs: a('Animation') }) +
-      champ(p + '-secr', 'Secrétariat de séance', b.Secretariat, { attrs: a('Secretariat') }) +
+      champ(p + '-anim', 'Animation', b.Animation, { attrs: a('Animation') + ' list="rn-personnes"' }) +
+      champ(p + '-secr', 'Secrétariat de séance', b.Secretariat, { attrs: a('Secretariat') + ' list="rn-personnes"' }) +
       champ(p + '-obj', 'Objectif de la réunion', b.Objectif, { multiligne: true, lignes: 2, attrs: a('Objectif'), classe: 'rn-large' }) +
       champ(p + '-part', 'Participants', b.Participants, { multiligne: true, lignes: 2, aide: 'Noms séparés par des virgules ou des retours à la ligne.', attrs: a('Participants'), classe: 'rn-large' }) +
+      ajoutParticipants(p) +
       (p === 'i' ? champ(p + '-exc', 'Excusés', b.Excuses, { multiligne: true, lignes: 2, attrs: a('Excuses'), classe: 'rn-large' }) : '') +
       '</div>';
+  }
+
+  // Liste déroulante qui ajoute une personne de la table Personnes au champ Participants.
+  function ajoutParticipants(p) {
+    var noms = nomsPersonnes();
+    if (!noms.length) return '';
+    return '<div class="fr-select-group rn-large"><label class="fr-label" for="' + p + '-ajout">Ajouter une personne de la table Personnes</label>' +
+      '<select class="fr-select" id="' + p + '-ajout" data-ajout-participant="' + p + '-part"><option value="">Choisir une personne</option>' +
+      noms.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('') + '</select></div>';
   }
 
   function champsReunion(b) {
@@ -435,7 +450,7 @@
       champ('p-desc-' + r.id, 'Précisions', b.Description || '', { multiligne: true, lignes: 2, attrs: a + ' data-champ="Description"' }) +
       select('p-type-' + r.id, 'Type de point', b.Type || L.typesPoint[0], L.typesPoint, a + ' data-champ="Type"') +
       champ('p-duree-' + r.id, 'Durée souhaitée (minutes)', b.Duree || DUREE_DEFAUT, { type: 'number', attrs: a + ' data-champ="Duree" min="1"' }) +
-      champ('p-porteur-' + r.id, 'Qui présente ?', b.Porteur || '', { attrs: a + ' data-champ="Porteur"' }) +
+      champ('p-porteur-' + r.id, 'Qui présente ?', b.Porteur || '', { attrs: a + ' data-champ="Porteur" list="rn-personnes"' }) +
       '<button class="fr-btn fr-btn--secondary" type="submit">Proposer ce point</button></form>';
     if (autres.length) {
       h += '<h2 class="fr-h6 fr-mt-3w">Reportés ou écartés</h2><ul class="rn-liste-simple">' + autres.map(function (p) {
@@ -485,9 +500,13 @@
     return h;
   }
 
+  function nomsPersonnes() {
+    return (data.Personnes || []).map(function (p) { return String(p.Nom || '').trim(); }).filter(Boolean).sort(function (a, b) { return a.localeCompare(b, 'fr'); });
+  }
   function datalistPersonnes(r) {
     var noms = {};
-    String(r.Participants || '').split(/[,\n;]+/).forEach(function (n) { n = n.trim(); if (n) noms[n] = 1; });
+    nomsPersonnes().forEach(function (n) { noms[n] = 1; });
+    String((r && r.Participants) || '').split(/[,\n;]+/).forEach(function (n) { n = n.trim(); if (n) noms[n] = 1; });
     data[T_ACTIONS].forEach(function (a) { if (a.Responsable) noms[a.Responsable] = 1; });
     return '<datalist id="rn-personnes">' + Object.keys(noms).sort().map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>';
   }
@@ -850,6 +869,15 @@
     if (el.hasAttribute('data-notes')) {
       var pid = num(el.getAttribute('data-notes'));
       if ((idx.Points[pid].Notes || '') !== el.value) executer([['UpdateRecord', 'Points', pid, { Notes: el.value }]], 'Notes enregistrées.');
+      return;
+    }
+    if (el.hasAttribute('data-ajout-participant')) {
+      var zone = document.getElementById(el.getAttribute('data-ajout-participant')), nom = el.value;
+      el.value = '';
+      if (!zone || !nom) return;
+      var deja = zone.value.split(/[,\n;]+/).map(function (x) { return x.trim(); });
+      if (deja.indexOf(nom) < 0) { zone.value = zone.value.replace(/\s+$/, '') + (zone.value.trim() ? '\n' : '') + nom; zone.dispatchEvent(new Event('input', { bubbles: true })); }
+      zone.focus();
       return;
     }
     if (el.hasAttribute('data-traite')) { executer([['UpdateRecord', 'Points', num(el.getAttribute('data-traite')), { Traite: el.checked }]]); return; }
