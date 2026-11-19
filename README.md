@@ -99,6 +99,7 @@ Ce widget est déjà assemblé, avec d'autres, dans des **espaces** : des docume
 
 - [espace-pilotage](https://github.com/lab17bis/espace-pilotage) : piloter une équipe : management visuel, réunions, projets et indicateurs.
 - [espace-collaboratif](https://github.com/lab17bis/espace-collaboratif) : travailler ensemble : réunions, projets partagés et ressources communes.
+- [espace-reseau](https://github.com/lab17bis/espace-reseau) : animer un réseau : membres, groupes, rencontres et présences, ressources partagées, retours et indicateurs.
 
 ## Autres outils de la même famille
 
