@@ -354,7 +354,7 @@
   function ajoutParticipants(p) {
     var noms = nomsPersonnes();
     if (!noms.length) return '';
-    return '<div class="fr-select-group rn-large"><label class="fr-label" for="' + p + '-ajout">Ajouter une personne de la table Personnes</label>' +
+    return '<div class="fr-select-group rn-large fr-mb-3w"><label class="fr-label" for="' + p + '-ajout">Ajouter une personne de la table Personnes</label>' +
       '<select class="fr-select" id="' + p + '-ajout" data-ajout-participant="' + p + '-part"><option value="">Choisir une personne</option>' +
       noms.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('') + '</select></div>';
   }
