@@ -71,13 +71,20 @@ Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas.
 - Le responsable d'une action est un texte libre, pas une référence à un annuaire.
 - Aucun audit RGAA n'a été mené.
 
+## Espaces clés en main
+
+Ce widget est déjà assemblé, avec d'autres, dans des **espaces** : des documents Grist complets à importer en une fois, vides ou avec un exemple fictif.
+
+- [espace-pilotage](https://github.com/lab17bis/espace-pilotage) : piloter une équipe : management visuel, réunions, projets et indicateurs.
+- [espace-collaboratif](https://github.com/lab17bis/espace-collaboratif) : travailler ensemble : réunions, projets partagés et ressources communes.
+
 ## Autres outils de la même famille
 
 - [grist-questionnaire](https://github.com/lab17bis/grist-questionnaire) : questionnaires au DSFR avec logique conditionnelle.
 - [grist-catalogue](https://github.com/lab17bis/grist-catalogue) : catalogue public de fiches au DSFR.
 - [grist-graphique](https://github.com/lab17bis/grist-graphique) : tableaux de bord et graphiques au DSFR.
 - [grist-projet](https://github.com/lab17bis/grist-projet) : espace d'équipe pour gérer des projets.
-- [grist-management](https://github.com/lab17bis/grist-management) : espace de management visuel qui affiche la prochaine réunion et les actions ouvertes.
+- [grist-management](https://github.com/lab17bis/grist-management) : écran de management visuel d'équipe, qui affiche aussi la prochaine réunion et les actions ouvertes.
 
 Ils partagent les mêmes réglages d'en-tête et de pied de page.
 
