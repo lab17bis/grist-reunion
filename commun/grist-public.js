@@ -39,6 +39,7 @@
   function analyserLien(lien) {
     try {
       var u = new URL(String(lien).trim());
+      if (u.protocol !== "https:" && !(u.protocol === "http:" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname))) { return null; }
       var seg = u.pathname.split("/").filter(Boolean);
       var org = "";
       if (seg[0] === "o") { org = seg[1]; seg = seg.slice(2); }
