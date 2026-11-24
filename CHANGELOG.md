@@ -7,6 +7,9 @@ Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans ret
 ### Corrigé
 - Page publique : une table ou une colonne masquée par les règles d'accès du document (par exemple les adresses de courriel) n'empêche plus d'afficher le reste de la page.
 
+### Ajouté
+- Documentation de la page publique (README) : réglages, ce qui est lu, ce qui reste caché, règles d'accès à poser.
+
 ## 2026-11-24 (page publique)
 
 ### Ajouté

@@ -124,6 +124,14 @@ Les widgets qui ont un en-tête et un pied de page partagent les mêmes réglage
 
 Grist, widget Grist, widget-outil, réunion, ordre du jour, compte rendu, procès-verbal, relevé de décisions, plan d'action, suivi des actions, prise de notes, comité de pilotage, réunion d'équipe, DSFR, Système de design de l'État, La Suite numérique, DINUM, service public, clé en main, logiciel libre.
 
+## Page publique
+
+Page dédiée : `public.html?doc=<lien du document>`. Ce qui est publié dépend de l'étape de la réunion : « En préparation » n'est jamais publiée ; l'ordre du jour apparaît à l'étape suivante ; notes, décisions et actions seulement à la dernière étape (« Compte rendu diffusé »). Les participants et les excusés ne sont affichés que si la case correspondante est cochée dans l'onglet Publication.
+
+L'onglet **Publication** construit le lien d'une page publique : collez le lien du document Grist partagé en lecture publique (*Partager › Accès public : Lecteur*), puis copiez ou ouvrez le lien obtenu. La page est en lecture seule, sans compte, et n'écrit jamais dans le document. L'option `integre=1` retire l'en-tête et le pied de page pour intégrer la page dans un autre site ou dans le [portail](https://github.com/lab17bis/grist-portail).
+
+Le partage en lecture publique rend lisibles **toutes** les tables du document, pas seulement celles que la page affiche. Pour masquer une table ou une colonne au public, utilisez les règles d'accès de Grist, par exemple avec la condition `not user.IsLoggedIn` (lecture refusée). La page tolère une table masquée. Testez en navigation privée avant de diffuser le lien.
+
 ## Licence
 
 Code sous licence MIT (voir `LICENSE`). Le DSFR embarqué dans `vendor/dsfr/` conserve sa propre licence. Réutilisation, adaptation et contributions bienvenues.
