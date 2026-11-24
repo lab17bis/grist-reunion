@@ -84,11 +84,16 @@
   }
   if (aDoc) { classer(); }
 
-  function json(r) {
-    if (!r.ok) { throw new Error("Lecture impossible (erreur " + r.status + "). Le document est-il partagé en lecture publique ?"); }
+  function json(r, chemin) {
+    if (!r.ok) {
+      var m = /\/tables\/([^\/]+)\//.exec(chemin || "");
+      var t = m ? decodeURIComponent(m[1]) : "";
+      if (r.status === 403) { throw new Error("La table " + (t ? "« " + t + " » " : "") + "n'est pas lisible publiquement : elle est masquée par les règles d'accès du document (erreur 403)."); }
+      throw new Error("Lecture impossible (erreur " + r.status + "). Le document est-il partagé en lecture publique ?");
+    }
     return r.json();
   }
-  function rest(chemin) { return fetch(cible.base + chemin).then(json); }
+  function rest(chemin) { return fetch(cible.base + chemin).then(function (r) { return json(r, chemin); }); }
 
   var LISTES = { ChoiceList: 1, RefList: 1, Attachments: 1 };
 
