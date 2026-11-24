@@ -12,3 +12,7 @@
 .cl-apercu { border: 1px solid var(--border-default-grey); background: var(--background-default-grey); }
 .cl-apercu .pd-pied { margin-top: 0; }
 .cl-apercu__contenu { min-height: 8rem; }
+
+/* Bouton d'accès à la configuration, placé en haut de l'outil (ajout 2026-11-24) */
+.cl-acces { text-align: right; margin: .5rem 0; }
+@media print { .cl-acces { display: none !important; } }

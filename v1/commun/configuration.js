@@ -10,6 +10,7 @@
  *   options.publication   : { mode: "connecte" | "public", lien, adresseWidget, texte }
  *   options.surEnregistrer: function () : à appeler quand la personne clique sur Enregistrer
  *   options.surAnnuler    : facultatif
+ *   options.ongletInitial : facultatif, identifiant de l'onglet à ouvrir (utile quand l'écran est redessiné)
  * Renvoie { modifie(oui), message(type, texte), enregistre(oui), onglet(id) }.
  *
  * Les panneaux restent dans la page (ils sont seulement masqués) : les champs des onglets propres
@@ -65,6 +66,7 @@
     var onglets = (opt.onglets || []).map(function (o) { return { id: o.id, libelle: o.libelle, propre: o }; })
       .concat([{ id: "page", libelle: "En-tête et pied" }, { id: "apercu", libelle: "Aperçu" }, { id: "publication", libelle: "Publication" }]);
     var actif = onglets[0].id;
+    if (opt.ongletInitial && onglets.some(function (o) { return o.id === opt.ongletInitial; })) { actif = opt.ongletInitial; }
 
     conteneur.classList.add("cl-config");
     conteneur.innerHTML =
@@ -72,7 +74,7 @@
       "<p class=\"fr-badge fr-badge--sm fr-badge--success\" id=\"" + id + "-etat\">Enregistré</p></div>" +
       "<fieldset class=\"fr-segmented fr-segmented--sm\"><legend class=\"fr-segmented__legend fr-sr-only\">Rubrique de la configuration</legend><div class=\"fr-segmented__elements\">" +
       onglets.map(function (o, i) {
-        return "<div class=\"fr-segmented__element\"><input value=\"" + o.id + "\" type=\"radio\" id=\"" + id + "-o" + i + "\" name=\"" + id + "-onglet\"" + (i === 0 ? " checked" : "") + "><label class=\"fr-label\" for=\"" + id + "-o" + i + "\">" + esc(o.libelle) + "</label></div>";
+        return "<div class=\"fr-segmented__element\"><input value=\"" + o.id + "\" type=\"radio\" id=\"" + id + "-o" + i + "\" name=\"" + id + "-onglet\"" + (o.id === actif ? " checked" : "") + "><label class=\"fr-label\" for=\"" + id + "-o" + i + "\">" + esc(o.libelle) + "</label></div>";
       }).join("") + "</div></fieldset>" +
       "<ul class=\"fr-btns-group fr-btns-group--inline fr-btns-group--sm cl-actions\">" +
       (opt.surAnnuler ? "<li><button type=\"button\" class=\"fr-btn fr-btn--secondary\" data-cl-annuler>Annuler</button></li>" : "") +
@@ -102,7 +104,7 @@
 
     function afficher(i) {
       actif = i;
-      onglets.forEach(function (o) { zone(o.id).hidden = o.id !== i; });
+      onglets.forEach(function (o, k) { zone(o.id).hidden = o.id !== i; var r = document.getElementById(id + "-o" + k); if (r) { r.checked = o.id === i; } });
       if (i === "apercu") { rendreApercu(); }
     }
 
@@ -132,11 +134,14 @@
       if (ev.target.closest("[data-cl-annuler]") && opt.surAnnuler) { opt.surAnnuler(); }
     });
 
+    if (actif === "apercu") { rendreApercu(); }
+
     return {
       modifie: modifie,
       enregistre: function () { modifie(false); },
       message: message,
-      onglet: afficher
+      onglet: afficher,
+      ongletActif: function () { return actif; }
     };
   }
 
