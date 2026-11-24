@@ -230,16 +230,15 @@
 
   function rendre() {
     var r = route(), html;
+    monterCoque();
     if (!DEMO && tablesManquantes().length) { app.innerHTML = vueInstallation(); return; }
     if (r.vue === 'reunion') html = vueReunion(r.id, r.onglet);
     else if (r.vue === 'nouvelle') html = vueNouvelle(r.depuis);
     else if (r.vue === 'actions') html = vueActions();
-    else if (r.vue === 'reglages') html = vueReglages();
     else html = vueAccueil();
     // Une seule liste de suggestions de noms par écran.
     if (html.indexOf('list="rn-personnes"') >= 0 && html.indexOf('id="rn-personnes"') < 0) html += datalistPersonnes(r.id ? (idx.Reunions || {})[r.id] : null);
     app.innerHTML = html;
-    if (r.vue === 'reglages') monterReglages();
     majChrono();
   }
 
@@ -248,7 +247,7 @@
     return '<nav class="rn-nav" aria-label="Navigation de l\'outil"><ul class="fr-btns-group fr-btns-group--inline-sm fr-btns-group--sm">' +
       liens.map(function (l) {
         return '<li><a class="fr-btn ' + (l[2] === active ? '' : 'fr-btn--secondary') + '" href="' + l[0] + '"' + (l[2] === active ? ' aria-current="page"' : '') + '>' + l[1] + '</a></li>';
-      }).join('') + '<li class="rn-nav__config"><a class="fr-btn fr-btn--tertiary' + (active === 'reglages' ? '" aria-current="page' : '') + '" href="#/reglages">Configurer</a></li></ul></nav>';
+      }).join('') + '<li class="rn-nav__config"><a class="fr-btn fr-btn--tertiary" href="#/reglages">Configurer</a></li></ul></nav>';
   }
 
   function blocAlerte() {
@@ -638,10 +637,6 @@
     ['etatsAction', 'États des actions', 'Actions_reunion', 'Etat']
   ];
 
-  function vueReglages() {
-    if (!brouillonReglages) brouillonReglages = JSON.parse(JSON.stringify(reglages || {}));
-    return navigation('reglages') + blocAlerte() + '<div id="rn-config"></div>';
-  }
   function reglagesPropres() {
     var b = brouillonReglages; b.listes = b.listes || {};
     var h = '<div class="cl-panneau"><p class="fr-text--sm">Réservé aux propriétaires du document. Les réglages sont enregistrés dans la description de la colonne <code>' + NOM_COLONNE_CONFIG + '</code> de la table Reunions.</p>' +
@@ -654,12 +649,15 @@
     return h;
   }
   var configLab = null;
-  function monterReglages() {
-    var z = document.getElementById('rn-config');
-    if (!z || !window.ConfigLab) return;
+  function monterCoque() {
+    var z = document.getElementById('rn-coque');
+    if (configLab || !z || !window.ConfigLab) return;
+    brouillonReglages = JSON.parse(JSON.stringify(reglages || {}));
     brouillonReglages.page = brouillonReglages.page || { marque: '', titre: 'Réunions', pied: { accessibilite: '' } };
     configLab = window.ConfigLab.monter(z, {
-      nom: 'Configuration de Réunions',
+      nom: 'Réunions',
+      vue: { libelle: 'Réunions', element: app },
+      ongletInitial: route().vue === 'reglages' ? 'reglages' : 'vue',
       page: brouillonReglages.page,
       onglets: [{ id: 'reglages', libelle: 'Réglages', rendre: function (zone) { zone.innerHTML = reglagesPropres(); } }],
       apercu: function (zone) {
@@ -667,8 +665,7 @@
           '<div class="fr-card fr-card--sm fr-mb-2w"><div class="fr-card__body"><div class="fr-card__content"><h2 class="fr-card__title">Réunion d\'équipe</h2><p class="fr-card__desc">Exemple de carte : l\'en-tête et le pied de page ci-dessus encadrent tous les écrans de l\'outil.</p></div></div></div>';
       },
       publication: { mode: 'connecte', adresseWidget: location.href.split('#')[0].split('?')[0] },
-      surEnregistrer: enregistrerReglages,
-      surAnnuler: function () { brouillonReglages = null; location.hash = '#/'; }
+      surEnregistrer: enregistrerReglages
     });
   }
   function enregistrerReglages() {
@@ -692,10 +689,11 @@
       actions.push(['ModifyColumn', l[2], l[3], { widgetOptions: JSON.stringify(o) }]);
     });
     grist.docApi.applyUserActions(actions).then(function () {
-      meta.colConfig = true; appliquerReglages(b); brouillonReglages = null;
-      etat.alerte = { type: 'success', texte: 'Réglages enregistrés.' }; rendre();
+      meta.colConfig = true; appliquerReglages(b);
+      if (configLab) { configLab.enregistre(); configLab.message('success', 'Réglages enregistrés.'); }
+      rendre();
     }).catch(function (err) {
-      etat.alerte = { type: 'error', texte: 'Enregistrement impossible : seuls les propriétaires du document peuvent modifier les réglages. (' + ((err && err.message) || err) + ')' }; rendre();
+      if (configLab) configLab.message('error', 'Enregistrement impossible : seuls les propriétaires du document peuvent modifier les réglages. (' + ((err && err.message) || err) + ')');
     });
   }
 
@@ -952,6 +950,7 @@
   window.addEventListener('hashchange', function () {
     if (etat.garderAlerte) etat.garderAlerte = false; else etat.alerte = null;
     etat.suppression = null;
+    if (configLab) configLab.onglet(route().vue === 'reglages' ? 'reglages' : 'vue');
     rendre(); window.scrollTo(0, 0);
   });
 

@@ -29,7 +29,7 @@ Ensuite, invitez l'équipe dans le document (*Partager*), en éditeur pour propo
 
 ## Le régler
 
-Le bouton *Configurer* ouvre une page de configuration unique, en quatre onglets : *Réglages* (les listes de valeurs et la durée proposée par défaut pour un point), *En-tête et pied*, *Aperçu* (le rendu avec les réglages en cours) et *Publication* (qui peut utiliser l'outil, adresse du widget). Elle regroupe l'en-tête et le pied de page, les listes de valeurs (instances, étapes d'une réunion, types de points, états des actions) et la durée proposée par défaut pour un point. Les choix des colonnes Grist sont mis à jour en même temps.
+Le widget s'ouvre sur une barre d'onglets : *Réunions* (l'outil), puis *Réglages* (les listes de valeurs et la durée proposée par défaut pour un point), *En-tête et pied*, *Aperçu* (le rendu avec les réglages en cours) et *Publication* (qui peut utiliser l'outil, adresse du widget). Elle regroupe l'en-tête et le pied de page, les listes de valeurs (instances, étapes d'une réunion, types de points, états des actions) et la durée proposée par défaut pour un point. Les choix des colonnes Grist sont mis à jour en même temps.
 
 Les réglages sont enregistrés en JSON dans la **description de la colonne `Config_reunion`** de la table `Reunions`. Ne supprimez pas cette colonne.
 

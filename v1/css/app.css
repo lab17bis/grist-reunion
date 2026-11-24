@@ -94,3 +94,4 @@ body { background: var(--background-default-grey); color: var(--text-default-gre
   #rn-app { padding: 0; }
 }
 .rn-nav__config { margin-left: auto; }
+#rn-coque #rn-app { padding-left: 0; padding-right: 0; }

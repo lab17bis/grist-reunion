@@ -2,6 +2,13 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-24 (barre d'onglets permanente)
+
+### Modifié
+- Le widget s'ouvre désormais sur une barre d'onglets, comme le catalogue et le questionnaire : *Réunions*, puis les onglets de réglages, En-tête et pied, Aperçu, Publication. L'outil lui-même est le premier onglet.
+- Le bouton « Configurer » laisse la place à la barre d'onglets ; les anciens liens et boutons « Réglages » restent actifs et ouvrent l'onglet Réglages.
+- L'enregistrement des réglages reste dans la colonne de configuration existante : rien à migrer.
+
 ## 2026-11-24
 
 ### Ajouté

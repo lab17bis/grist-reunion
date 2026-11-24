@@ -5,15 +5,19 @@
  * ConfigLab.monter(conteneur, options)
  *   options.nom           : nom de l'outil (titre de la barre)
  *   options.page          : objet « page » (en-tête et pied) modifié sur place
- *   options.onglets       : [{ id, libelle, rendre(zone) }] réglages propres à l'outil, affichés en premier
+ *   options.vue           : facultatif, { libelle, element } : premier onglet, qui contient l'outil lui-même.
+ *                           L'élément (la zone principale de l'outil) est déplacé dans l'onglet ; la page s'ouvre dessus.
+ *   options.onglets       : [{ id, libelle, rendre(zone) }] réglages propres à l'outil, affichés après la vue
  *   options.apercu        : facultatif, function (zone, page) : montre un échantillon de l'outil sous l'en-tête
  *   options.publication   : { mode: "connecte" | "public", lien, adresseWidget, texte }
  *   options.surEnregistrer: function () : à appeler quand la personne clique sur Enregistrer
  *   options.surAnnuler    : facultatif
  *   options.libelleAnnuler: facultatif, texte du bouton secondaire (« Annuler » par défaut, par exemple « Fermer »)
  *   options.modifieInitial: facultatif, vrai pour ouvrir avec le badge « Modifications non enregistrées »
+ *   options.surOnglet     : facultatif, function (id) : appelée à chaque changement d'onglet (utile pour redimensionner une carte ou un graphique)
  *   options.ongletInitial : facultatif, identifiant de l'onglet à ouvrir (utile quand l'écran est redessiné)
- * Renvoie { modifie(oui), message(type, texte), enregistre(oui), onglet(id) }.
+ * Renvoie { modifie(oui), message(type, texte), enregistre(oui), onglet(id), rafraichir(id), ongletActif(), estModifie() }.
+ * rafraichir(id) redessine un onglet propre à l'outil (par exemple après un enregistrement).
  *
  * Les panneaux restent dans la page (ils sont seulement masqués) : les champs des onglets propres
  * à l'outil gardent leurs valeurs quand on change d'onglet.
@@ -65,12 +69,15 @@
 
   function monter(conteneur, opt) {
     var id = "cl" + (++compteur);
-    var onglets = (opt.onglets || []).map(function (o) { return { id: o.id, libelle: o.libelle, propre: o }; })
+    var propres = (opt.onglets || []).map(function (o) { return o.id; });
+    var onglets = (opt.vue ? [{ id: "vue", libelle: opt.vue.libelle || "Vue" }] : [])
+      .concat((opt.onglets || []).map(function (o) { return { id: o.id, libelle: o.libelle, propre: o }; }))
       .concat([{ id: "page", libelle: "En-tête et pied" }, { id: "apercu", libelle: "Aperçu" }, { id: "publication", libelle: "Publication" }]);
     var actif = onglets[0].id;
     if (opt.ongletInitial && onglets.some(function (o) { return o.id === opt.ongletInitial; })) { actif = opt.ongletInitial; }
 
     conteneur.classList.add("cl-config");
+    conteneur.classList.toggle("cl-sur-vue", actif === "vue");
     conteneur.innerHTML =
       "<div class=\"cl-barre\"><div class=\"cl-titre\"><p class=\"cl-nom\">" + esc(opt.nom || "Configuration") + "</p>" +
       "<p class=\"fr-badge fr-badge--sm fr-badge--success\" id=\"" + id + "-etat\">Enregistré</p></div>" +
@@ -87,6 +94,10 @@
     function zone(i) { return document.getElementById(id + "-p-" + i); }
     var etat = document.getElementById(id + "-etat");
 
+    if (opt.vue) {
+      if (opt.vue.element) { zone("vue").appendChild(opt.vue.element); }
+      else if (opt.vue.rendre) { opt.vue.rendre(zone("vue")); }
+    }
     (opt.onglets || []).forEach(function (o) { o.rendre(zone(o.id)); });
     var zonePage = zone("page");
     zonePage.innerHTML = "<div class=\"cl-panneau\"></div>";
@@ -106,8 +117,10 @@
 
     function afficher(i) {
       actif = i;
+      conteneur.classList.toggle("cl-sur-vue", i === "vue");
       onglets.forEach(function (o, k) { zone(o.id).hidden = o.id !== i; var r = document.getElementById(id + "-o" + k); if (r) { r.checked = o.id === i; } });
       if (i === "apercu") { rendreApercu(); }
+      if (opt.surOnglet) { try { opt.surOnglet(i); } catch (e) { /* sans effet */ } }
     }
 
     var modif = false;
@@ -125,11 +138,12 @@
 
     conteneur.addEventListener("change", function (ev) {
       if (ev.target.name === id + "-onglet") { afficher(ev.target.value); return; }
-      if (ev.target.closest && ev.target.closest("[data-cl-section]") && ev.target.closest("[data-cl-section]").getAttribute("data-cl-section") !== "page") { modifie(true); }
+      var sec = ev.target.closest && ev.target.closest("[data-cl-section]");
+      if (sec && propres.indexOf(sec.getAttribute("data-cl-section")) >= 0) { modifie(true); }
     });
     conteneur.addEventListener("input", function (ev) {
       var s = ev.target.closest && ev.target.closest("[data-cl-section]");
-      if (s && s.getAttribute("data-cl-section") !== "page" && s.getAttribute("data-cl-section") !== "publication") { modifie(true); }
+      if (s && propres.indexOf(s.getAttribute("data-cl-section")) >= 0) { modifie(true); }
     });
     conteneur.addEventListener("click", function (ev) {
       var c = ev.target.closest("[data-cl-copier]");
@@ -146,6 +160,9 @@
       enregistre: function () { modifie(false); },
       message: message,
       onglet: afficher,
+      rafraichir: function (i) {
+        (opt.onglets || []).forEach(function (o) { if (o.id === i) { o.rendre(zone(o.id)); } });
+      },
       ongletActif: function () { return actif; },
       estModifie: function () { return modif; }
     };

@@ -16,3 +16,7 @@
 /* Bouton d'accès à la configuration, placé en haut de l'outil (ajout 2026-11-24) */
 .cl-acces { text-align: right; margin: .5rem 0; }
 @media print { .cl-acces { display: none !important; } }
+
+/* Onglet Vue : l'outil prend toute la place, sans les boutons d'enregistrement (ajout 2026-11-24) */
+.cl-sur-vue .cl-actions, .cl-sur-vue [id$="-etat"] { display: none; }
+.cl-section[data-cl-section="vue"] { min-width: 0; }
