@@ -10,6 +10,7 @@
  *   options.publication   : { mode: "connecte" | "public", lien, adresseWidget, texte }
  *   options.surEnregistrer: function () : à appeler quand la personne clique sur Enregistrer
  *   options.surAnnuler    : facultatif
+ *   options.modifieInitial: facultatif, vrai pour ouvrir avec le badge « Modifications non enregistrées »
  *   options.ongletInitial : facultatif, identifiant de l'onglet à ouvrir (utile quand l'écran est redessiné)
  * Renvoie { modifie(oui), message(type, texte), enregistre(oui), onglet(id) }.
  *
@@ -108,7 +109,9 @@
       if (i === "apercu") { rendreApercu(); }
     }
 
+    var modif = false;
     function modifie(oui) {
+      modif = !!oui;
       etat.textContent = oui ? "Modifications non enregistrées" : "Enregistré";
       etat.className = "fr-badge fr-badge--sm " + (oui ? "fr-badge--warning" : "fr-badge--success");
     }
@@ -134,6 +137,7 @@
       if (ev.target.closest("[data-cl-annuler]") && opt.surAnnuler) { opt.surAnnuler(); }
     });
 
+    if (opt.modifieInitial) { modifie(true); }
     if (actif === "apercu") { rendreApercu(); }
 
     return {
@@ -141,7 +145,8 @@
       enregistre: function () { modifie(false); },
       message: message,
       onglet: afficher,
-      ongletActif: function () { return actif; }
+      ongletActif: function () { return actif; },
+      estModifie: function () { return modif; }
     };
   }
 
