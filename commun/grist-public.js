@@ -131,7 +131,8 @@
   }
   function metaColonnes() {
     return metaTables().then(function (mt) {
-      return Promise.all(mt.tableId.map(function (n) { return rest("/tables/" + encodeURIComponent(n) + "/columns"); })).then(function (res) {
+      // Une table refusée par les règles d'accès du document est ignorée : les autres restent lisibles.
+      return Promise.all(mt.tableId.map(function (n) { return rest("/tables/" + encodeURIComponent(n) + "/columns").catch(function () { return { columns: [] }; }); })).then(function (res) {
         var t = { id: [], parentId: [], colId: [], label: [], type: [], description: [], widgetOptions: [], isFormula: [] };
         res.forEach(function (r, i) {
           r.columns.forEach(function (c) {
