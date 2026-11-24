@@ -248,7 +248,7 @@
     return '<nav class="rn-nav" aria-label="Navigation de l\'outil"><ul class="fr-btns-group fr-btns-group--inline-sm fr-btns-group--sm">' +
       liens.map(function (l) {
         return '<li><a class="fr-btn ' + (l[2] === active ? '' : 'fr-btn--secondary') + '" href="' + l[0] + '"' + (l[2] === active ? ' aria-current="page"' : '') + '>' + l[1] + '</a></li>';
-      }).join('') + '</ul></nav>';
+      }).join('') + '<li class="rn-nav__config"><a class="fr-btn fr-btn--tertiary' + (active === 'reglages' ? '" aria-current="page' : '') + '" href="#/reglages">Configurer</a></li></ul></nav>';
   }
 
   function blocAlerte() {
@@ -639,29 +639,41 @@
   ];
 
   function vueReglages() {
-    if (DEMO) return navigation('') + '<div class="fr-alert fr-alert--info"><p>Les réglages se font dans Grist, par un propriétaire du document.</p></div>';
     if (!brouillonReglages) brouillonReglages = JSON.parse(JSON.stringify(reglages || {}));
+    return navigation('reglages') + blocAlerte() + '<div id="rn-config"></div>';
+  }
+  function reglagesPropres() {
     var b = brouillonReglages; b.listes = b.listes || {};
-    var h = navigation('') + '<div class="rn-titre-ligne"><h1 class="fr-h3">Réglages</h1></div>' +
-      '<p class="fr-text--sm">Réservé aux propriétaires du document. Les réglages sont enregistrés dans la description de la colonne <code>' + NOM_COLONNE_CONFIG + '</code> de la table Reunions.</p>' + blocAlerte() +
-      '<section><h2 class="fr-h5">En-tête et pied de page</h2><div id="rn-reglages-page"></div></section><section><h2 class="fr-h5">Listes de valeurs</h2><p class="fr-text--sm">Une valeur par ligne. Les listes de choix des colonnes Grist sont mises à jour à l\'enregistrement. La première étape d\'une réunion est celle des réunions nouvelles.</p>';
+    var h = '<div class="cl-panneau"><p class="fr-text--sm">Réservé aux propriétaires du document. Les réglages sont enregistrés dans la description de la colonne <code>' + NOM_COLONNE_CONFIG + '</code> de la table Reunions.</p>' +
+      '<h2 class="fr-h5">Listes de valeurs</h2><p class="fr-text--sm">Une valeur par ligne. Les listes de choix des colonnes Grist sont mises à jour à l\'enregistrement. La première étape d\'une réunion est celle des réunions nouvelles.</p>';
     LISTES_REGLABLES.forEach(function (l) {
       h += '<div class="fr-input-group"><label class="fr-label" for="rg-' + l[0] + '">' + esc(l[1]) + '<span class="fr-hint-text">Colonne ' + l[2] + '.' + l[3] + '</span></label>' +
         '<textarea class="fr-input" rows="4" id="rg-' + l[0] + '">' + esc((b.listes[l[0]] && b.listes[l[0]].length ? b.listes[l[0]] : DEFAUTS[l[0]]).join('\n')) + '</textarea></div>';
     });
-    h += '</section><section><h2 class="fr-h5">Autres réglages</h2>' + champ('rg-duree', 'Durée proposée par défaut pour un point (minutes)', b.dureeDefaut || 10, { type: 'number', attrs: 'min="1"' }) + '</section>' +
-      '<ul class="fr-btns-group fr-btns-group--inline-md"><li><button type="button" class="fr-btn" data-action="enregistrer-reglages">Enregistrer les réglages</button></li>' +
-      '<li><button type="button" class="fr-btn fr-btn--secondary" data-action="annuler-reglages">Annuler les modifications</button></li></ul>';
+    h += '<h2 class="fr-h5 fr-mt-3w">Autres réglages</h2>' + champ('rg-duree', 'Durée proposée par défaut pour un point (minutes)', b.dureeDefaut || 10, { type: 'number', attrs: 'min="1"' }) + '</div>';
     return h;
   }
+  var configLab = null;
   function monterReglages() {
-    var z = document.getElementById('rn-reglages-page');
-    if (!z || !window.PageEditeur) return;
+    var z = document.getElementById('rn-config');
+    if (!z || !window.ConfigLab) return;
     brouillonReglages.page = brouillonReglages.page || { marque: '', titre: 'Réunions', pied: { accessibilite: '' } };
-    window.PageEditeur.monter(z, brouillonReglages.page, function () {});
+    configLab = window.ConfigLab.monter(z, {
+      nom: 'Configuration de Réunions',
+      page: brouillonReglages.page,
+      onglets: [{ id: 'reglages', libelle: 'Réglages', rendre: function (zone) { zone.innerHTML = reglagesPropres(); } }],
+      apercu: function (zone) {
+        zone.innerHTML = '<h1 class="fr-h3">Réunions</h1><p class="fr-text--sm">À venir et en cours</p>' +
+          '<div class="fr-card fr-card--sm fr-mb-2w"><div class="fr-card__body"><div class="fr-card__content"><h2 class="fr-card__title">Réunion d\'équipe</h2><p class="fr-card__desc">Exemple de carte : l\'en-tête et le pied de page ci-dessus encadrent tous les écrans de l\'outil.</p></div></div></div>';
+      },
+      publication: { mode: 'connecte', adresseWidget: location.href.split('#')[0].split('?')[0] },
+      surEnregistrer: enregistrerReglages,
+      surAnnuler: function () { brouillonReglages = null; location.hash = '#/'; }
+    });
   }
   function enregistrerReglages() {
     var b = brouillonReglages;
+    if (DEMO) { if (configLab) configLab.message('info', 'Mode démonstration : rien n\'est enregistré. Dans Grist, les réglages sont enregistrés dans le document.'); return; }
     LISTES_REGLABLES.forEach(function (l) {
       var v = document.getElementById('rg-' + l[0]).value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
       if (!v.length || v.join('|') === DEFAUTS[l[0]].join('|')) delete b.listes[l[0]]; else b.listes[l[0]] = v;

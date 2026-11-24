@@ -93,3 +93,4 @@ body { background: var(--background-default-grey); color: var(--text-default-gre
   .rn-cr { border: 0; padding: 0; max-width: none; }
   #rn-app { padding: 0; }
 }
+.rn-nav__config { margin-left: auto; }
