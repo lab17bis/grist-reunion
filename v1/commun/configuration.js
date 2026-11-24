@@ -10,6 +10,7 @@
  *   options.publication   : { mode: "connecte" | "public", lien, adresseWidget, texte }
  *   options.surEnregistrer: function () : à appeler quand la personne clique sur Enregistrer
  *   options.surAnnuler    : facultatif
+ *   options.libelleAnnuler: facultatif, texte du bouton secondaire (« Annuler » par défaut, par exemple « Fermer »)
  *   options.modifieInitial: facultatif, vrai pour ouvrir avec le badge « Modifications non enregistrées »
  *   options.ongletInitial : facultatif, identifiant de l'onglet à ouvrir (utile quand l'écran est redessiné)
  * Renvoie { modifie(oui), message(type, texte), enregistre(oui), onglet(id) }.
@@ -78,7 +79,7 @@
         return "<div class=\"fr-segmented__element\"><input value=\"" + o.id + "\" type=\"radio\" id=\"" + id + "-o" + i + "\" name=\"" + id + "-onglet\"" + (o.id === actif ? " checked" : "") + "><label class=\"fr-label\" for=\"" + id + "-o" + i + "\">" + esc(o.libelle) + "</label></div>";
       }).join("") + "</div></fieldset>" +
       "<ul class=\"fr-btns-group fr-btns-group--inline fr-btns-group--sm cl-actions\">" +
-      (opt.surAnnuler ? "<li><button type=\"button\" class=\"fr-btn fr-btn--secondary\" data-cl-annuler>Annuler</button></li>" : "") +
+      (opt.surAnnuler ? "<li><button type=\"button\" class=\"fr-btn fr-btn--secondary\" data-cl-annuler>" + esc(opt.libelleAnnuler || "Annuler") + "</button></li>" : "") +
       "<li><button type=\"button\" class=\"fr-btn\" data-cl-enregistrer>Enregistrer</button></li></ul></div>" +
       "<div class=\"cl-message\" id=\"" + id + "-message\" aria-live=\"polite\"></div>" +
       onglets.map(function (o) { return "<section class=\"cl-section\" id=\"" + id + "-p-" + o.id + "\" data-cl-section=\"" + o.id + "\"" + (o.id === actif ? "" : " hidden") + "></section>"; }).join("");
