@@ -108,7 +108,7 @@ Ce widget est déjà assemblé, avec d'autres, dans des **espaces** : des docume
 - [grist-graphique](https://github.com/lab17bis/grist-graphique) : tableaux de bord et graphiques au DSFR.
 - [grist-projet](https://github.com/lab17bis/grist-projet) : espace d'équipe pour gérer des projets.
 - [grist-management](https://github.com/lab17bis/grist-management) : écran de management visuel d'équipe.
-- [grist-decision](https://github.com/lab17bis/grist-decision) : consultations : boîte à idées, valorisation des réalisations, votes et suites données.
+- [grist-consultation](https://github.com/lab17bis/grist-consultation) : consultations : boîte à idées, valorisation des réalisations, votes et suites données.
 - [grist-carte](https://github.com/lab17bis/grist-carte) : carte interactive des lignes d'une table, au fond de l'IGN.
 - [grist-graphe](https://github.com/lab17bis/grist-graphe) : cartographie des acteurs et de leurs liens.
 

@@ -2,6 +2,11 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-24 (documentation)
+
+### Modifié
+- Documentation : l'outil de consultation s'appelle désormais `grist-consultation` (ancien nom `grist-decision`).
+
 ## 2026-11-24 (barre d'onglets permanente)
 
 ### Modifié
