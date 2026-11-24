@@ -664,7 +664,14 @@
         zone.innerHTML = '<h1 class="fr-h3">Réunions</h1><p class="fr-text--sm">À venir et en cours</p>' +
           '<div class="fr-card fr-card--sm fr-mb-2w"><div class="fr-card__body"><div class="fr-card__content"><h2 class="fr-card__title">Réunion d\'équipe</h2><p class="fr-card__desc">Exemple de carte : l\'en-tête et le pied de page ci-dessus encadrent tous les écrans de l\'outil.</p></div></div></div>';
       },
-      publication: { mode: 'connecte', adresseWidget: location.href.split('#')[0].split('?')[0] },
+      publication: { mode: 'connecte', adresseWidget: location.href.split('#')[0].split('?')[0],
+        publier: {
+          lienDoc: (brouillonReglages.publication && brouillonReglages.publication.lienDoc) || '',
+          texte: 'Page publique en lecture seule : prochaines réunions, instances, ordre du jour, puis compte rendu une fois la réunion à la dernière étape (« Compte rendu diffusé »). Une réunion « En préparation » n\'est jamais publiée.',
+          champs: [{ type: 'case', libelle: 'Afficher les participants et les excusés', aide: 'Désactivé par défaut : ce sont des noms de personnes.', valeur: !!(brouillonReglages.publication && brouillonReglages.publication.participants) }],
+          construire: function (l) { return window.GristPublic ? window.GristPublic.lien(location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, 'public.html'), { doc: l }) : null; },
+          surChangement: function (l, champs) { brouillonReglages.publication = { lienDoc: l, participants: !!(champs && champs[0] && champs[0].valeur) }; }
+        } },
       surEnregistrer: enregistrerReglages
     });
   }

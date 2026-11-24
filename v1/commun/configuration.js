@@ -9,7 +9,9 @@
  *                           L'élément (la zone principale de l'outil) est déplacé dans l'onglet ; la page s'ouvre dessus.
  *   options.onglets       : [{ id, libelle, rendre(zone) }] réglages propres à l'outil, affichés après la vue
  *   options.apercu        : facultatif, function (zone, page) : montre un échantillon de l'outil sous l'en-tête
- *   options.publication   : { mode: "connecte" | "public", lien, adresseWidget, texte }
+ *   options.publication   : { mode: "connecte" | "public", lien, adresseWidget, texte,
+ *                             publier: { lienDoc, champs: [{ libelle, aide, exemple, valeur, type: "texte" | "case" }], construire(lienDoc) -> adresse,
+ *                                       surChangement(lienDoc, champs), texte } }
  *   options.surEnregistrer: function () : à appeler quand la personne clique sur Enregistrer
  *   options.surAnnuler    : facultatif
  *   options.libelleAnnuler: facultatif, texte du bouton secondaire (« Annuler » par défaut, par exemple « Fermer »)
@@ -40,11 +42,56 @@
     document.body.removeChild(a); fin();
   }
 
+  // Publication par lien : saisie du lien du document Grist partagé en lecture publique,
+  // puis lien de la page publique construit par l'outil (pub.publier.construire).
+  function publierHtml(pb, id) {
+    return "<h2 class=\"fr-h5\">Page publique</h2>" +
+      "<p class=\"fr-text--sm\">" + (pb.texte || "Cet outil peut être consulté en page complète, sans compte Grist, en lecture seule.") + "</p>" +
+      "<div class=\"fr-input-group\"><label class=\"fr-label\" for=\"" + id + "-doc\">Lien du document Grist partagé en lecture publique" +
+      "<span class=\"fr-hint-text\">Dans Grist : Partager, puis « Accès public » en lecture seule, puis copiez le lien.</span></label>" +
+      "<input class=\"fr-input cl-code\" id=\"" + id + "-doc\" value=\"" + esc(pb.lienDoc || "") + "\" placeholder=\"https://docs.getgrist.com/…\"></div>" +
+      (pb.champs || []).map(function (c, i) {
+        if (c.type === "case") {
+          return "<div class=\"fr-checkbox-group fr-mb-2w\"><input type=\"checkbox\" id=\"" + id + "-ch" + i + "\"" + (c.valeur ? " checked" : "") + "><label class=\"fr-label\" for=\"" + id + "-ch" + i + "\">" + esc(c.libelle) + (c.aide ? "<span class=\"fr-hint-text\">" + esc(c.aide) + "</span>" : "") + "</label></div>";
+        }
+        return "<div class=\"fr-input-group\"><label class=\"fr-label\" for=\"" + id + "-ch" + i + "\">" + esc(c.libelle) + (c.aide ? "<span class=\"fr-hint-text\">" + esc(c.aide) + "</span>" : "") + "</label>" +
+          "<input class=\"fr-input cl-code\" id=\"" + id + "-ch" + i + "\" value=\"" + esc(c.valeur || "") + "\"" + (c.exemple ? " placeholder=\"" + esc(c.exemple) + "\"" : "") + "></div>";
+      }).join("") +
+      "<div id=\"" + id + "-resultat\"></div>";
+  }
+  function resultatPublier(zone, pb, id) {
+    var r = zone.querySelector("#" + id + "-resultat");
+    if (!r) { return; }
+    var l = pb.lienDoc ? pb.construire(pb.lienDoc) : null;
+    if (!l) { r.innerHTML = "<p class=\"fr-text--sm\">Renseignez le lien du document pour obtenir l'adresse de la page publique.</p>"; return; }
+    r.innerHTML = "<div class=\"fr-input-group\"><label class=\"fr-label\" for=\"" + id + "-lien\">Lien à diffuser</label><input class=\"fr-input cl-code\" id=\"" + id + "-lien\" readonly value=\"" + esc(l) + "\"></div>" +
+      "<ul class=\"fr-btns-group fr-btns-group--inline fr-btns-group--sm\"><li><button type=\"button\" class=\"fr-btn fr-btn--secondary\" data-cl-copier=\"" + id + "-lien\">Copier le lien</button></li>" +
+      "<li><a class=\"fr-btn fr-btn--tertiary\" href=\"" + esc(l) + "\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir la page publique - nouvelle fenêtre\">Ouvrir la page</a></li></ul>";
+  }
+  function brancherPublier(zone, pub, id, modifie) {
+    if (!pub || !pub.publier) { return; }
+    var champ = zone.querySelector("#" + id + "-doc");
+    resultatPublier(zone, pub.publier, id);
+    function changement() {
+      if (pub.publier.surChangement) { pub.publier.surChangement(pub.publier.lienDoc, pub.publier.champs); }
+      resultatPublier(zone, pub.publier, id);
+      if (modifie) { modifie(true); }
+    }
+    if (champ) { champ.addEventListener("input", function () { pub.publier.lienDoc = champ.value.trim(); changement(); }); }
+    (pub.publier.champs || []).forEach(function (c, i) {
+      var n = zone.querySelector("#" + id + "-ch" + i);
+      if (n && c.type === "case") { n.addEventListener("change", function () { c.valeur = n.checked; changement(); }); }
+      else if (n) { n.addEventListener("input", function () { c.valeur = n.value.trim(); changement(); }); }
+    });
+  }
+
   function publicationHtml(pub, id) {
     pub = pub || { mode: "connecte" };
     var adresse = pub.adresseWidget || "";
     var h = "<div class=\"cl-panneau\">";
-    if (pub.mode === "public" && pub.lien) {
+    if (pub.publier) {
+      h += publierHtml(pub.publier, id);
+    } else if (pub.mode === "public" && pub.lien) {
       h += "<h2 class=\"fr-h5\">Page publique</h2>" +
         "<p class=\"fr-text--sm\">Cet outil peut être consulté sans compte Grist, par un lien. Le lien donne accès aux données que le document laisse lire publiquement.</p>" +
         "<div class=\"fr-input-group\"><label class=\"fr-label\" for=\"" + id + "-lien\">Lien à diffuser</label><input class=\"fr-input cl-code\" id=\"" + id + "-lien\" readonly value=\"" + esc(pub.lien) + "\"></div>" +
@@ -103,6 +150,7 @@
     zonePage.innerHTML = "<div class=\"cl-panneau\"></div>";
     if (global.PageEditeur) { global.PageEditeur.monter(zonePage.firstChild, opt.page, function () { modifie(true); }); }
     zone("publication").innerHTML = publicationHtml(opt.publication, id);
+    brancherPublier(zone("publication"), opt.publication, id, function (v) { modifie(v); });
 
     function rendreApercu() {
       var z = zone("apercu");
@@ -120,6 +168,7 @@
       conteneur.classList.toggle("cl-sur-vue", i === "vue");
       onglets.forEach(function (o, k) { zone(o.id).hidden = o.id !== i; var r = document.getElementById(id + "-o" + k); if (r) { r.checked = o.id === i; } });
       if (i === "apercu") { rendreApercu(); }
+      if (i === "publication" && opt.publication && opt.publication.publier) { resultatPublier(zone("publication"), opt.publication.publier, id); }
       if (opt.surOnglet) { try { opt.surOnglet(i); } catch (e) { /* sans effet */ } }
     }
 

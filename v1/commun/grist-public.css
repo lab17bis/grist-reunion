@@ -1,0 +1,13 @@
+/* Mode public : lecture seule, aucune commande d'écriture ni de réglage. */
+.gp-public .gp-ecriture,
+.gp-public [data-ecriture],
+.gp-public .cl-barre,
+.gp-public .cl-actions {
+  display: none !important;
+}
+/* Page intégrée dans un autre site : ni en-tête ni pied propres. */
+.gp-integre #entete,
+.gp-integre #pied,
+.gp-integre .gp-hors-integre {
+  display: none !important;
+}

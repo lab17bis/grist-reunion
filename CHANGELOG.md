@@ -2,6 +2,17 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-24 (page publique)
+
+### Ajouté
+- Page publique dédiée `public.html?doc=<lien du document Grist>` : prochaines réunions, réunions passées, filtre par instance, ordre du jour et compte rendu, en lecture seule.
+- Ce qui est publié dépend de l'étape de la réunion : une réunion « En préparation » n'est jamais publiée ; l'ordre du jour apparaît dès l'étape suivante ; notes, décisions et actions seulement à la dernière étape (« Compte rendu diffusé »).
+- Les participants et les excusés ne sont affichés que si la case correspondante est cochée dans l'onglet Publication.
+- Module commun `commun/page-publique.js` pour les pages publiques dédiées.
+- Module commun `commun/grist-public.js` (et `.css`) : lit le document par l'API REST de Grist, en lecture seule, sans compte.
+- Onglet Publication : saisissez le lien du document Grist partagé en lecture publique, l'outil construit le lien de la page publique, à copier ou à ouvrir ; le lien est enregistré avec les réglages.
+- Option `integre=1` : page sans en-tête ni pied propres, pour l'intégrer dans un autre site.
+
 ## 2026-11-24 (documentation)
 
 ### Modifié
