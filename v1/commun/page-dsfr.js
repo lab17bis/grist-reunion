@@ -56,13 +56,17 @@
   }
 
   // Adresse sûre : http(s), mailto, tel, data:image, ancre ou chemin relatif.
+  // Le navigateur ignore les tabulations, retours à la ligne et caractères de contrôle
+  // d'une adresse (« java⇥script: » devient « javascript: ») : on les retire, puis on
+  // laisse le navigateur lire l'adresse (new URL) avant de juger son protocole.
   function adresseSure(u) {
-    var s = String(u || "").trim();
+    var s = String(u || "").replace(/[\u0000-\u001f\u007f]/g, "").trim();
     if (!s) { return ""; }
-    if (/^(https?:|mailto:|tel:)/i.test(s) || /^#/.test(s) || /^\.?\.?\//.test(s)) { return s; }
-    if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(s)) { return s; }
-    if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) { return s; }
-    return "";
+    var x;
+    try { x = new URL(s, location.href); } catch (e) { return ""; }
+    if (/^(https?|mailto|tel):$/.test(x.protocol)) { return s; }
+    if (x.protocol === "data:") { return /^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(s) ? s : ""; }
+    return /^[a-z][a-z0-9+.-]*:/i.test(s) ? "" : s;
   }
 
   function remplacer(lien, contexte) {

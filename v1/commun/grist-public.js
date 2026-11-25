@@ -94,7 +94,12 @@
     }
     return r.json();
   }
-  function rest(chemin) { return fetch(cible.base + chemin).then(function (r) { return json(r, chemin); }); }
+  function rest(chemin) {
+    return fetch(cible.base + chemin).catch(function () {
+      // Erreur réseau du navigateur (« Failed to fetch ») : message compréhensible.
+      throw new Error("Le document Grist est injoignable : vérifiez l'adresse du document et votre connexion.");
+    }).then(function (r) { return json(r, chemin); });
+  }
 
   var LISTES = { ChoiceList: 1, RefList: 1, Attachments: 1 };
 
