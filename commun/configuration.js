@@ -8,7 +8,11 @@
  *   options.vue           : facultatif, { libelle, element } : premier onglet, qui contient l'outil lui-même.
  *                           L'élément (la zone principale de l'outil) est déplacé dans l'onglet ; la page s'ouvre dessus.
  *   options.onglets       : [{ id, libelle, rendre(zone) }] réglages propres à l'outil, affichés après la vue
- *   options.apercu        : facultatif, function (zone, page) : montre un échantillon de l'outil sous l'en-tête
+ *   options.apercu        : facultatif, function (zone, page) : montre un échantillon de l'outil sous l'en-tête.
+ *                           Sans cette fonction, et si options.vue.element existe, l'aperçu est réel : l'outil lui-même
+ *                           est déplacé entre l'en-tête et le pied de page, puis remis dans son onglet en quittant l'aperçu.
+ *   options.surApercu     : facultatif, function (ouvert) : appelée quand l'outil entre dans l'aperçu réel (true) et quand il
+ *                           en sort (false). Sert à appliquer les réglages en cours, non enregistrés, puis à les retirer.
  *   options.publication   : { mode: "connecte" | "public", lien, adresseWidget, texte,
  *                             publier: { lienDoc, champs: [{ libelle, aide, exemple, valeur, type: "texte" | "case" }], construire(lienDoc) -> adresse,
  *                                       surChangement(lienDoc, champs), texte } }
@@ -152,19 +156,36 @@
     zone("publication").innerHTML = publicationHtml(opt.publication, id);
     brancherPublier(zone("publication"), opt.publication, id, function (v) { modifie(v); });
 
+    // Aperçu réel : l'élément de l'outil voyage entre son onglet et l'aperçu (déplacé, jamais copié).
+    var reel = !opt.apercu && !!(opt.vue && opt.vue.element);
+    var dansApercu = false;
+    function restituerVue() {
+      if (!dansApercu) { return; }
+      dansApercu = false;
+      zone("vue").appendChild(opt.vue.element);
+      if (opt.surApercu) { try { opt.surApercu(false); } catch (e) { /* sans effet */ } }
+    }
+
     function rendreApercu() {
+      restituerVue();
       var z = zone("apercu");
-      z.innerHTML = "<div class=\"fr-notice fr-notice--info fr-mb-2w\"><div class=\"fr-notice__body\"><p class=\"fr-notice__title\">Aperçu avec les réglages en cours, même non enregistrés.</p></div></div>" +
+      z.innerHTML = "<div class=\"fr-notice fr-notice--info fr-mb-2w\"><div class=\"fr-notice__body\"><p class=\"fr-notice__title\">Aperçu avec les réglages en cours, même non enregistrés." + (reel ? " L'outil est réellement actif : ce que vous y faites s'applique au document." : "") + "</p></div></div>" +
         "<div class=\"cl-apercu\"><div data-cl=\"entete\"></div><main class=\"cl-apercu__contenu fr-container fr-py-4w\" data-cl=\"contenu\"></main><div data-cl=\"pied\"></div></div>";
       var r = global.PageDSFR ? global.PageDSFR.appliquer(opt.page, { entete: z.querySelector("[data-cl=entete]"), pied: z.querySelector("[data-cl=pied]"), accueil: "#" }) : null;
       if (r) { [r.entete, r.pied].forEach(function (n) { if (n) { n.removeAttribute("id"); Array.prototype.forEach.call(n.querySelectorAll("[id]"), function (x) { x.removeAttribute("id"); }); Array.prototype.forEach.call(n.querySelectorAll("a[href]"), function (a) { a.setAttribute("tabindex", "-1"); a.addEventListener("click", function (e) { e.preventDefault(); }); }); } }); }
       var c = z.querySelector("[data-cl=contenu]");
-      if (opt.apercu) { try { opt.apercu(c, opt.page); } catch (e) { c.innerHTML = "<p class=\"fr-text--sm\">Aperçu indisponible.</p>"; } }
+      if (reel) {
+        c.appendChild(opt.vue.element);
+        dansApercu = true;
+        if (opt.surApercu) { try { opt.surApercu(true); } catch (e) { /* sans effet */ } }
+      }
+      else if (opt.apercu) { try { opt.apercu(c, opt.page); } catch (e) { c.innerHTML = "<p class=\"fr-text--sm\">Aperçu indisponible.</p>"; } }
       else { c.innerHTML = "<p class=\"fr-text--sm\">Les écrans de l'outil s'affichent entre cet en-tête et ce pied de page.</p>"; }
     }
 
     function afficher(i) {
       actif = i;
+      if (i !== "apercu") { restituerVue(); }
       conteneur.classList.toggle("cl-sur-vue", i === "vue");
       onglets.forEach(function (o, k) { zone(o.id).hidden = o.id !== i; var r = document.getElementById(id + "-o" + k); if (r) { r.checked = o.id === i; } });
       if (i === "apercu") { rendreApercu(); }

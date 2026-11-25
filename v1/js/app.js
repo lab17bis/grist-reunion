@@ -648,7 +648,7 @@
     h += '<h2 class="fr-h5 fr-mt-3w">Autres réglages</h2>' + champ('rg-duree', 'Durée proposée par défaut pour un point (minutes)', b.dureeDefaut || 10, { type: 'number', attrs: 'min="1"' }) + '</div>';
     return h;
   }
-  var configLab = null;
+  var configLab = null, avantApercu = null;
   function monterCoque() {
     var z = document.getElementById('rn-coque');
     if (configLab || !z || !window.ConfigLab) return;
@@ -660,9 +660,19 @@
       ongletInitial: route().vue === 'reglages' ? 'reglages' : 'vue',
       page: brouillonReglages.page,
       onglets: [{ id: 'reglages', libelle: 'Réglages', rendre: function (zone) { zone.innerHTML = reglagesPropres(); } }],
-      apercu: function (zone) {
-        zone.innerHTML = '<h1 class="fr-h3">Réunions</h1><p class="fr-text--sm">À venir et en cours</p>' +
-          '<div class="fr-card fr-card--sm fr-mb-2w"><div class="fr-card__body"><div class="fr-card__content"><h2 class="fr-card__title">Réunion d\'équipe</h2><p class="fr-card__desc">Exemple de carte : l\'en-tête et le pied de page ci-dessus encadrent tous les écrans de l\'outil.</p></div></div></div>';
+      // Aperçu réel : l'outil lui-même s'affiche sous l'en-tête, avec les listes en cours de saisie (même non enregistrées).
+      surApercu: function (ouvert) {
+        if (ouvert && configLab && configLab.estModifie() && brouillonReglages) {
+          avantApercu = reglages;
+          var d = JSON.parse(JSON.stringify(brouillonReglages)); d.listes = d.listes || {};
+          LISTES_REGLABLES.forEach(function (l) {
+            var n = document.getElementById('rg-' + l[0]); if (!n) return;
+            var v = n.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+            if (!v.length || v.join('|') === DEFAUTS[l[0]].join('|')) delete d.listes[l[0]]; else d.listes[l[0]] = v;
+          });
+          d.dureeDefaut = num(document.getElementById('rg-duree').value) || 10;
+          appliquerReglages(d); rendre();
+        } else if (!ouvert && avantApercu) { appliquerReglages(avantApercu); avantApercu = null; rendre(); }
       },
       publication: { mode: 'connecte', adresseWidget: location.href.split('#')[0].split('?')[0],
         publier: {
@@ -957,7 +967,7 @@
   window.addEventListener('hashchange', function () {
     if (etat.garderAlerte) etat.garderAlerte = false; else etat.alerte = null;
     etat.suppression = null;
-    if (configLab) configLab.onglet(route().vue === 'reglages' ? 'reglages' : 'vue');
+    if (configLab && configLab.ongletActif() !== 'apercu') configLab.onglet(route().vue === 'reglages' ? 'reglages' : 'vue');
     rendre(); window.scrollTo(0, 0);
   });
 
