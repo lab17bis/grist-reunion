@@ -2,6 +2,11 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-25 (mention de conception)
+
+### Ajouté
+- Mention discrète en pied de page, sur l'outil comme sur ses pages publiques : « Widget conçu par le Lab 17 bis, le laboratoire d'innovation publique de l'académie de Reims ».
+
 ## 2026-11-25 (aperçu réel)
 
 ### Amélioré

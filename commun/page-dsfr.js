@@ -29,6 +29,8 @@
     }
   };
 
+  var CREDIT = "Widget conçu par le Lab 17 bis, le laboratoire d'innovation publique de l'académie de Reims";
+
   function el(tag, attrs, enfants) {
     var n = document.createElement(tag);
     Object.keys(attrs || {}).forEach(function (k) {
@@ -172,11 +174,15 @@
       aMarque ? el("div", { class: "fr-footer__brand pd-pied-marques" }, [marque].concat(logos)) : null,
       p.texte ? el("div", { class: "fr-footer__content" }, [el("p", { class: "fr-footer__content-desc" }, lignes(p.texte))]) : null
     ]) : null;
+    // Mention de l'auteur des widgets : toujours présente, discrète, non réglable.
+    var credit = el("p", { class: "pd-credit", text: CREDIT });
     var bas = (liens.length || p.mention) ? el("div", { class: "fr-footer__bottom" }, [
       el("ul", { class: "fr-footer__bottom-list" }, liens),
-      p.mention ? el("div", { class: "fr-footer__bottom-copy" }, [el("p", {}, lignes(p.mention))]) : null
+      p.mention ? el("div", { class: "fr-footer__bottom-copy" }, [el("p", {}, lignes(p.mention))]) : null,
+      credit
     ]) : null;
-    if (!corps && !bas) { return el("div", { class: "pd-pied", id: "pied" }); }
+    if (!corps && !bas) { return el("div", { class: "pd-pied pd-pied--credit", id: "pied" }, [credit]); }
+    if (!bas) { bas = el("div", { class: "fr-footer__bottom" }, [credit]); }
     return el("footer", { class: "fr-footer pd-pied", role: "contentinfo", id: "pied" }, [
       el("div", { class: "fr-container" }, [corps, bas])
     ]);
@@ -191,6 +197,9 @@
       options.entete = e;
     }
     if (options.pied) {
+      if (options.pied.id === "pied") {
+        Array.prototype.forEach.call(document.querySelectorAll(".pd-credit--seul"), function (n) { n.remove(); });
+      }
       var f = pied(page);
       options.pied.replaceWith(f);
       options.pied = f;
@@ -228,4 +237,14 @@
     adresseSure: adresseSure,
     lireImage: lireImage
   };
+  // Mention de l'auteur aussi quand le pied de page DSFR n'est pas réglé : placée dans l'emplacement du pied (#pied),
+  // sauf pour une page intégrée dans une autre, qui a déjà la sienne.
+  function creditSeul() {
+    if (/[?&#]integre=1(\b|$)/.test(location.search + location.hash)) { return; }
+    if (document.querySelector(".pd-credit")) { return; }
+    var place = document.getElementById("pied");
+    if (place) { place.appendChild(el("p", { class: "pd-credit pd-credit--seul", text: CREDIT })); }
+  }
+  if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", creditSeul); } else { creditSeul(); }
+
 })(typeof window !== "undefined" ? window : globalThis);

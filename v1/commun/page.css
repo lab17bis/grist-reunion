@@ -23,6 +23,22 @@
   margin-top: 3rem;
 }
 
+/* Mention de l'auteur des widgets */
+.pd-credit {
+  flex-basis: 100%;
+  margin: .5rem 0 0;
+  font-size: .75rem;
+  line-height: 1.25rem;
+  color: var(--text-mention-grey);
+}
+.pd-pied--credit {
+  margin-top: 1rem;
+  padding: .5rem 1.5rem;
+}
+.pd-pied--credit .pd-credit { margin: 0; }
+.pd-credit--seul { margin: 0; padding: .5rem 1.5rem; }
+@media print { .pd-credit { color: #000; } }
+
 /* Formulaire de réglage */
 .pe-section {
   margin-top: 2rem;
