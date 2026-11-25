@@ -6,7 +6,7 @@ Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans ret
 
 ### Sécurité
 - Les liens venant des données ou des réglages sont vérifiés par le navigateur lui-même : une adresse déguisée (« java⇥script: » avec tabulation, retour à la ligne ou caractère de contrôle) n'est plus acceptée. Elle permettait, sur le portail, d'exécuter du script au clic depuis une adresse fabriquée.
-- Politique de sécurité de contenu stricte : seuls les scripts du site, l'API Grist et les scripts de la page connus par leur empreinte peuvent s'exécuter. Un script injecté (lien javascript:, attribut onerror…) est bloqué même si un filtre le laissait passer.
+- Politique de sécurité de contenu stricte : seuls les scripts du site, l'API Grist et les scripts de la page connus par leur empreinte peuvent s'exécuter. L'évaluation de texte (« unsafe-eval ») reste permise : l'API officielle de Grist en a besoin (sans elle, les widgets restaient bloqués sur « Chargement… » dans Grist le 25/11 au matin). Un script injecté (lien javascript:, attribut onerror…) est bloqué même si un filtre le laissait passer.
 - Page publique : message clair si le document Grist est injoignable (au lieu de « Failed to fetch »).
 
 ## 2026-11-24 (durcissement)
