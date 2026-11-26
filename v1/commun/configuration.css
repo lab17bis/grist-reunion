@@ -18,5 +18,5 @@
 @media print { .cl-acces { display: none !important; } }
 
 /* Onglet Vue : l'outil prend toute la place, sans les boutons d'enregistrement (ajout 2026-11-24) */
-.cl-sur-vue .cl-actions, .cl-sur-vue [id$="-etat"] { display: none; }
+.cl-sur-vue .cl-actions, .cl-sur-vue .cl-titre [id$="-etat"] { display: none; } /* seul le badge « Enregistré » de la barre (correctif 2026-11-26 : masquait aussi le filtre f-etat) */
 .cl-section[data-cl-section="vue"] { min-width: 0; }
