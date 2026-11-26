@@ -241,7 +241,7 @@
     else html = vueAccueil();
     // Une seule liste de suggestions de noms par écran.
     if (html.indexOf('list="rn-personnes"') >= 0 && html.indexOf('id="rn-personnes"') < 0) html += datalistPersonnes(r.id ? (idx.Reunions || {})[r.id] : null);
-    app.innerHTML = html;
+    app.innerHTML = blocColonnesManquantes() + html;
     majChrono();
   }
 
@@ -903,10 +903,46 @@
     return TABLES.filter(function (t) { return ids.indexOf(t) < 0; });
   }
 
+  // Tables du même nom déjà présentes (créées à la main ou par un autre outil) :
+  // le widget les garde et leur ajoute seulement les colonnes qui leur manquent.
+  function colonnesManquantes() {
+    if (DEMO || !meta.tables.length) return [];
+    var sch = schema(), absentes = tablesManquantes(), r = [];
+    TABLES.forEach(function (t) {
+      if (absentes.indexOf(t) >= 0) return;
+      sch[t].forEach(function (c) { if (!aColonne(t, c[0])) r.push({ table: t, id: c[0], def: c[1] }); });
+    });
+    return r;
+  }
+  var CONSEIL_RENOMMER = 'Si l\'une de vos colonnes contient déjà cette information sous un autre nom (par exemple <code>Objet</code> au lieu de <code>Titre</code>), renommez-la d\'abord dans Grist avec le nom attendu : ses données seront reprises.';
+  function blocColonnesManquantes() {
+    var m = colonnesManquantes();
+    if (!m.length) return '';
+    return '<div class="fr-alert fr-alert--warning fr-mb-3w"><h2 class="fr-alert__title">Des colonnes attendues manquent dans vos tables</h2>' +
+      '<p>' + m.map(function (c) { return '<code>' + esc(c.table + '.' + c.id) + '</code>'; }).join(', ') + '. Sans elles, le widget ne peut ni afficher ni enregistrer ces informations.</p>' +
+      '<p class="fr-text--sm">' + CONSEIL_RENOMMER + ' Sinon, ajoutez-les : rien n\'est renommé ni supprimé. À faire par un propriétaire du document.</p>' +
+      '<button type="button" class="fr-btn fr-btn--sm" data-action="completer-colonnes">Ajouter les colonnes manquantes</button></div>';
+  }
+  function actionsColonnesManquantes() {
+    return colonnesManquantes().map(function (c) { return ['AddColumn', c.table, c.id, Object.assign({}, c.def)]; });
+  }
+  function completerColonnes() {
+    var a = actionsColonnesManquantes();
+    if (!a.length) return;
+    grist.docApi.applyUserActions(a).then(function () {
+      etat.alerte = { type: 'success', texte: a.length + ' colonne(s) ajoutée(s).' };
+      return charger();
+    }).then(rendre).catch(function (err) {
+      etat.alerte = { type: 'error', texte: 'Ajout impossible : seuls les propriétaires du document peuvent ajouter des colonnes. (' + ((err && err.message) || err) + ')' };
+      rendre();
+    });
+  }
+
   function vueInstallation() {
-    var manquantes = tablesManquantes();
+    var manquantes = tablesManquantes(), presentes = TABLES.filter(function (t) { return manquantes.indexOf(t) < 0; });
     return '<h1 class="fr-h3">Installer l\'outil de réunion dans ce document</h1>' + blocAlerte() +
-      '<p>Le widget a besoin des tables ' + manquantes.map(function (t) { return '<code>' + t + '</code>'; }).join(', ') + '. Il peut les créer pour vous. Les tables existantes ne sont pas modifiées.</p>' +
+      '<p>Le widget a besoin des tables ' + manquantes.map(function (t) { return '<code>' + t + '</code>'; }).join(', ') + '. Il peut les créer pour vous.' +
+      (presentes.length ? ' Les tables déjà présentes (' + presentes.map(function (t) { return '<code>' + t + '</code>'; }).join(', ') + ') sont gardées : le widget leur ajoute seulement les colonnes qui leur manquent, rien n\'est renommé ni supprimé.</p><p class="fr-text--sm">' + CONSEIL_RENOMMER + '</p>' : ' Les tables existantes ne sont pas modifiées.</p>') +
       '<p class="fr-text--sm">À faire par un propriétaire du document. Le widget doit avoir l\'accès complet au document.</p>' +
       '<ul class="fr-btns-group fr-btns-group--inline-md"><li><button type="button" class="fr-btn" data-installer="vide">Créer les tables</button></li>' +
       '<li><button type="button" class="fr-btn fr-btn--secondary" data-installer="exemple">Créer les tables avec un exemple fictif</button></li></ul>';
@@ -917,6 +953,7 @@
     tablesManquantes().forEach(function (t) {
       actions.push(['AddTable', t, sch[t].map(function (c) { return Object.assign({ id: c[0] }, c[1]); })]);
     });
+    actions = actions.concat(actionsColonnesManquantes());
     return grist.docApi.applyUserActions(actions).then(function () {
       // Les références affichent un libellé lisible plutôt qu'un numéro.
       return Promise.all([grist.docApi.fetchTable('_grist_Tables'), grist.docApi.fetchTable('_grist_Tables_column')]).then(function (m) {
@@ -992,6 +1029,7 @@
     var a = el.getAttribute('data-action');
     if (a === 'voir-passees') { etat.passees = !etat.passees; rendre(); return; }
     if (a === 'imprimer') { window.print(); return; }
+    if (a === 'completer-colonnes') { el.disabled = true; completerColonnes(); return; }
     if (a === 'copier-cr') {
       var texte = texteCompteRendu(idx.Reunions[num(el.getAttribute('data-reunion'))]);
       (navigator.clipboard ? navigator.clipboard.writeText(texte) : Promise.reject()).then(function () {
