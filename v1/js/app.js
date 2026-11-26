@@ -346,6 +346,7 @@
       champ(p + '-part', 'Participants', b.Participants, { multiligne: true, lignes: 2, aide: 'Noms séparés par des virgules ou des retours à la ligne.', attrs: a('Participants'), classe: 'rn-large' }) +
       ajoutParticipants(p) +
       (p === 'i' ? champ(p + '-exc', 'Excusés', b.Excuses, { multiligne: true, lignes: 2, attrs: a('Excuses'), classe: 'rn-large' }) : '') +
+      champsPersoFormulaire(p, b, attrs) +
       '</div>';
   }
 
@@ -358,10 +359,14 @@
       noms.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('') + '</select></div>';
   }
 
+  function manquesPerso(b) { return champsPerso().filter(function (c) { return c.requis && (b[c.id] === undefined || b[c.id] === null || String(b[c.id]).trim() === ''); }).map(function (c) { return '« ' + c.label + ' »'; }); }
   function champsReunion(b) {
     return { Titre: String(b.Titre || '').trim(), Instance: b.Instance || '', Date: typeof b.Date === 'number' ? b.Date : saisieVersDate(b.Date),
       Heure: b.Heure || '', Duree_prevue: num(b.Duree_prevue) || null, Lieu: b.Lieu || '', Animation: b.Animation || '', Secretariat: b.Secretariat || '',
       Participants: b.Participants || '', Objectif: b.Objectif || '', Excuses: b.Excuses || '' };
+  }
+  function champsReunionComplets(b) {
+    return Object.assign(champsReunion(b), champsPersoValeurs(b));
   }
 
   // ---------------------------------------------------------------------------
@@ -539,7 +544,8 @@
       (r.Animation ? '<div><dt>Animation</dt><dd>' + esc(r.Animation) + '</dd></div>' : '') +
       (r.Secretariat ? '<div><dt>Secrétariat</dt><dd>' + esc(r.Secretariat) + '</dd></div>' : '') +
       (r.Participants ? '<div><dt>Participants</dt><dd>' + texteMultiligne(r.Participants) + '</dd></div>' : '') +
-      (r.Excuses ? '<div><dt>Excusés</dt><dd>' + texteMultiligne(r.Excuses) + '</dd></div>' : '') + '</dl>' +
+      (r.Excuses ? '<div><dt>Excusés</dt><dd>' + texteMultiligne(r.Excuses) + '</dd></div>' : '') +
+      champsPerso().map(function (c) { var v = valeurPerso(c, r); return v ? '<div><dt>' + esc(c.label) + '</dt><dd>' + esc(v) + '</dd></div>' : ''; }).join('') + '</dl>' +
       (r.Objectif ? '<p><strong>Objectif :</strong> ' + esc(r.Objectif) + '</p>' : '');
     if (!retenus.length) h += '<p>Aucun point à l\'ordre du jour.</p>';
     retenus.forEach(function (p, i) {
@@ -637,6 +643,138 @@
     ['etatsAction', 'États des actions', 'Actions_reunion', 'Etat']
   ];
 
+
+  // ---------------------------------------------------------------------------
+  // Champs supplémentaires des réunions (colonnes ajoutées à la table Reunions)
+  // ---------------------------------------------------------------------------
+
+  var TYPES_CHAMP = [['court', 'Texte court'], ['long', 'Texte long'], ['choix', 'Choix dans une liste'], ['date', 'Date'], ['nombre', 'Nombre']];
+  var nouveauChamp = { label: '', type: 'court', choix: '', requis: false };
+  function aColonne(table, col) {
+    var t = meta.tables.filter(function (x) { return x.tableId === table; })[0];
+    return !!(t && meta.colonnes.filter(function (x) { return x.parentId === t.id && x.colId === col; })[0]);
+  }
+  // Champs dont la colonne existe dans la table Reunions.
+  function champsPerso() {
+    return (Array.isArray(reglages.champsPerso) ? reglages.champsPerso : []).filter(function (c) {
+      return c && /^[A-Za-z][A-Za-z0-9_]*$/.test(c.id || '') && c.label && (DEMO || aColonne('Reunions', c.id));
+    });
+  }
+  function identifiantChamp(lib) {
+    var id = String(lib || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    if (!id) return '';
+    id = id.charAt(0).toUpperCase() + id.slice(1);
+    return /^[0-9]/.test(id) ? 'C_' + id : id;
+  }
+  function valeurPerso(c, r) {
+    var v = r[c.id];
+    if (v === null || v === undefined || v === '') return '';
+    return c.type === 'date' ? dateTexte(v, true) : String(v);
+  }
+  function champsPersoFormulaire(p, b, attrs) {
+    return champsPerso().map(function (c) {
+      var id = p + '-' + c.id, a = attrs + ' data-champ="' + c.id + '"', v = b[c.id] === null || b[c.id] === undefined ? '' : b[c.id];
+      if (c.type === 'choix') return select(id, c.label, v, c.choix || [], a, 'Choisir…');
+      if (c.type === 'date') return champ(id, c.label, v ? (typeof v === 'number' ? dateVersSaisie(v) : v) : '', { type: 'date', attrs: a, requis: !!c.requis });
+      if (c.type === 'nombre') return champ(id, c.label, v, { type: 'number', attrs: a, requis: !!c.requis });
+      if (c.type === 'long') return champ(id, c.label, v, { multiligne: true, lignes: 3, attrs: a, classe: 'rn-large', requis: !!c.requis });
+      return champ(id, c.label, v, { attrs: a, requis: !!c.requis });
+    }).join('');
+  }
+  function champsPersoValeurs(b) {
+    var o = {};
+    champsPerso().forEach(function (c) {
+      var v = b[c.id];
+      if (c.type === 'date') o[c.id] = typeof v === 'number' ? v : saisieVersDate(v);
+      else if (c.type === 'nombre') o[c.id] = v === '' || v === undefined || v === null || isNaN(Number(v)) ? null : Number(v);
+      else o[c.id] = v === undefined || v === null ? '' : String(v);
+    });
+    return o;
+  }
+  function blocChampsPerso() {
+    var b = brouillonReglages; b.champsPerso = b.champsPerso || [];
+    var h = '<h2 class="fr-h5 fr-mt-4w">Champs supplémentaires des réunions</h2>' +
+      '<p class="fr-text--sm">Ajoutez vos propres champs à la fiche d\'une réunion (par exemple « Salle » ou « Budget »). Chaque champ devient une colonne de la table <code>Reunions</code>, créée à l\'enregistrement des réglages ; il apparaît dans le formulaire de la réunion et dans le compte rendu. Retirer un champ des réglages ne supprime ni la colonne ni ses données.</p>';
+    if (!b.champsPerso.length) h += '<p class="fr-text--sm"><em>Aucun champ supplémentaire.</em></p>';
+    b.champsPerso.forEach(function (c) {
+      var t = TYPES_CHAMP.filter(function (x) { return x[0] === c.type; })[0];
+      h += '<div class="rn-champ-perso"><p class="fr-mb-1v"><strong>' + esc(c.label) + '</strong> · ' + esc(t ? t[1] : c.type) + ' · colonne <code>' + esc(c.id) + '</code>' +
+        (DEMO || aColonne('Reunions', c.id) ? '' : ' <span class="fr-badge fr-badge--sm fr-badge--info">Créée à l\'enregistrement</span>') + '</p>' +
+        '<div class="fr-checkbox-group fr-checkbox-group--sm"><input type="checkbox" id="cp-req-' + esc(c.id) + '" data-cp-requis="' + esc(c.id) + '"' + (c.requis ? ' checked' : '') + '><label class="fr-label" for="cp-req-' + esc(c.id) + '">Obligatoire</label></div>' +
+        '<button type="button" class="fr-btn fr-btn--sm fr-btn--tertiary" data-cp="retirer" data-id="' + esc(c.id) + '">Retirer des réglages</button></div>';
+    });
+    var n = nouveauChamp;
+    h += '<h3 class="fr-h6 fr-mt-2w">Ajouter un champ</h3><div class="rn-champ-perso">' +
+      '<div class="fr-input-group"><label class="fr-label" for="nc-label">Libellé</label><input class="fr-input" id="nc-label" data-nc="label" value="' + esc(n.label) + '"></div>' +
+      '<div class="fr-select-group"><label class="fr-label" for="nc-type">Type</label><select class="fr-select" id="nc-type" data-nc="type">' +
+      TYPES_CHAMP.map(function (t) { return '<option value="' + t[0] + '"' + (t[0] === n.type ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></div>' +
+      (n.type === 'choix' ? '<div class="fr-input-group"><label class="fr-label" for="nc-choix">Valeurs possibles<span class="fr-hint-text">Une par ligne.</span></label><textarea class="fr-input" rows="3" id="nc-choix" data-nc="choix">' + esc(n.choix) + '</textarea></div>' : '') +
+      '<div class="fr-checkbox-group fr-checkbox-group--sm"><input type="checkbox" id="nc-requis" data-nc="requis"' + (n.requis ? ' checked' : '') + '><label class="fr-label" for="nc-requis">Obligatoire</label></div>' +
+      '<button type="button" class="fr-btn fr-btn--sm fr-mt-1w" data-cp="ajouter">Ajouter ce champ</button></div>';
+    return h;
+  }
+  var zoneReglages = null;
+  // Les listes de valeurs sont lues dans le DOM à l'enregistrement : on les range dans le brouillon avant de redessiner.
+  function redessinerReglages() {
+    if (!zoneReglages) return;
+    LISTES_REGLABLES.forEach(function (l) {
+      var n = document.getElementById('rg-' + l[0]); if (!n) return;
+      brouillonReglages.listes = brouillonReglages.listes || {};
+      var v = n.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (v.length) brouillonReglages.listes[l[0]] = v;
+    });
+    var d = document.getElementById('rg-duree'); if (d) brouillonReglages.dureeDefaut = num(d.value) || 10;
+    zoneReglages.innerHTML = reglagesPropres();
+  }
+  function brancherReglages(zone) {
+    zoneReglages = zone;
+    if (zone.__brancheRN) return;
+    zone.__brancheRN = true;
+    zone.addEventListener('change', function (e) {
+      var t = e.target;
+      if (t.hasAttribute('data-nc')) {
+        nouveauChamp[t.getAttribute('data-nc')] = t.type === 'checkbox' ? t.checked : t.value;
+        if (t.getAttribute('data-nc') === 'type') redessinerReglages();
+        return;
+      }
+      if (t.hasAttribute('data-cp-requis')) {
+        var cp = (brouillonReglages.champsPerso || []).filter(function (x) { return x.id === t.getAttribute('data-cp-requis'); })[0];
+        if (cp) { cp.requis = t.checked; if (configLab) configLab.modifie(true); }
+      }
+    });
+    zone.addEventListener('input', function (e) { var t = e.target; if (t.hasAttribute('data-nc') && t.type !== 'checkbox' && t.tagName !== 'SELECT') nouveauChamp[t.getAttribute('data-nc')] = t.value; });
+    zone.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-cp]'); if (!b) return;
+      if (b.getAttribute('data-cp') === 'ajouter') ajouterChampPerso();
+      else { brouillonReglages.champsPerso = (brouillonReglages.champsPerso || []).filter(function (x) { return x.id !== b.getAttribute('data-id'); }); if (configLab) configLab.modifie(true); redessinerReglages(); }
+    });
+  }
+  function ajouterChampPerso() {
+    var b = brouillonReglages; b.champsPerso = b.champsPerso || [];
+    var n = nouveauChamp, label = String(n.label || '').trim();
+    function refus(t) { if (configLab) configLab.message('error', t); }
+    if (!label) { refus('Indiquez le libellé du champ.'); return; }
+    var id = identifiantChamp(label);
+    if (!id) { refus('Le libellé doit contenir au moins une lettre ou un chiffre.'); return; }
+    if (aColonne('Reunions', id) || b.champsPerso.some(function (c) { return c.id === id; })) { refus('Le nom de colonne « ' + id + ' » est déjà pris : choisissez un autre libellé.'); return; }
+    var choix = String(n.choix || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (n.type === 'choix' && !choix.length) { refus('Indiquez au moins une valeur possible pour un champ « Choix ».'); return; }
+    b.champsPerso.push({ id: id, label: label, type: n.type, requis: !!n.requis, choix: n.type === 'choix' ? choix : [] });
+    nouveauChamp = { label: '', type: 'court', choix: '', requis: false };
+    if (configLab) { configLab.modifie(true); configLab.message('info', 'Champ « ' + label + ' » ajouté. Enregistrez les réglages pour créer la colonne dans Grist.'); }
+    redessinerReglages();
+  }
+  function colonnesChampsPerso(b) {
+    var acts = [];
+    (b.champsPerso || []).forEach(function (c) {
+      if (!c || !/^[A-Za-z][A-Za-z0-9_]*$/.test(c.id || '') || aColonne('Reunions', c.id)) return;
+      var d = { type: c.type === 'date' ? 'Date' : c.type === 'nombre' ? 'Numeric' : c.type === 'choix' ? 'Choice' : 'Text', label: c.label };
+      if (c.type === 'choix') d.widgetOptions = JSON.stringify({ choices: c.choix || [] });
+      acts.push(['AddColumn', 'Reunions', c.id, d]);
+    });
+    return acts;
+  }
+
   function reglagesPropres() {
     var b = brouillonReglages; b.listes = b.listes || {};
     var h = '<div class="cl-panneau"><p class="fr-text--sm">Réservé aux propriétaires du document. Les réglages sont enregistrés dans la description de la colonne <code>' + NOM_COLONNE_CONFIG + '</code> de la table Reunions.</p>' +
@@ -645,7 +783,7 @@
       h += '<div class="fr-input-group"><label class="fr-label" for="rg-' + l[0] + '">' + esc(l[1]) + '<span class="fr-hint-text">Colonne ' + l[2] + '.' + l[3] + '</span></label>' +
         '<textarea class="fr-input" rows="4" id="rg-' + l[0] + '">' + esc((b.listes[l[0]] && b.listes[l[0]].length ? b.listes[l[0]] : DEFAUTS[l[0]]).join('\n')) + '</textarea></div>';
     });
-    h += '<h2 class="fr-h5 fr-mt-3w">Autres réglages</h2>' + champ('rg-duree', 'Durée proposée par défaut pour un point (minutes)', b.dureeDefaut || 10, { type: 'number', attrs: 'min="1"' }) + '</div>';
+    h += '<h2 class="fr-h5 fr-mt-3w">Autres réglages</h2>' + champ('rg-duree', 'Durée proposée par défaut pour un point (minutes)', b.dureeDefaut || 10, { type: 'number', attrs: 'min="1"' }) + blocChampsPerso() + '</div>';
     return h;
   }
   var configLab = null, avantApercu = null;
@@ -659,7 +797,7 @@
       vue: { libelle: 'Réunions', element: app },
       ongletInitial: route().vue === 'reglages' ? 'reglages' : 'vue',
       page: brouillonReglages.page,
-      onglets: [{ id: 'reglages', libelle: 'Réglages', rendre: function (zone) { zone.innerHTML = reglagesPropres(); } }],
+      onglets: [{ id: 'reglages', libelle: 'Réglages', rendre: function (zone) { zone.innerHTML = reglagesPropres(); brancherReglages(zone); } }],
       // Aperçu réel : l'outil lui-même s'affiche sous l'en-tête, avec les listes en cours de saisie (même non enregistrées).
       surApercu: function (ouvert) {
         if (ouvert && configLab && configLab.estModifie() && brouillonReglages) {
@@ -693,7 +831,7 @@
       if (!v.length || v.join('|') === DEFAUTS[l[0]].join('|')) delete b.listes[l[0]]; else b.listes[l[0]] = v;
     });
     b.dureeDefaut = num(document.getElementById('rg-duree').value) || 10;
-    var actions = [];
+    var actions = colonnesChampsPerso(b);
     if (!meta.colConfig) actions.push(['AddColumn', 'Reunions', NOM_COLONNE_CONFIG, { type: 'Text', label: NOM_COLONNE_CONFIG }]);
     actions.push(['ModifyColumn', 'Reunions', NOM_COLONNE_CONFIG, { description: JSON.stringify(b) }]);
     LISTES_REGLABLES.forEach(function (l) {
@@ -706,6 +844,8 @@
       actions.push(['ModifyColumn', l[2], l[3], { widgetOptions: JSON.stringify(o) }]);
     });
     grist.docApi.applyUserActions(actions).then(function () {
+      return Promise.all([grist.docApi.fetchTable('_grist_Tables'), grist.docApi.fetchTable('_grist_Tables_column')]).then(function (m) { meta.tables = lignesDepuisColonnes(m[0]); meta.colonnes = lignesDepuisColonnes(m[1]); });
+    }).then(function () {
       meta.colConfig = true; appliquerReglages(b);
       if (configLab) { configLab.enregistre(); configLab.message('success', 'Réglages enregistrés.'); }
       rendre();
@@ -921,7 +1061,9 @@
       var depuis = num(f.getAttribute('data-depuis'));
       cle = 'nouvelle-' + depuis; b = brouillon(cle);
       if (!String(b.Titre || '').trim()) { etat.alerte = { type: 'error', texte: 'Indiquez un titre.' }; rendre(); return; }
-      var champs = Object.assign(champsReunion(b), { Statut: L.statutsReunion[0] });
+      var manq = manquesPerso(b);
+      if (manq.length) { etat.alerte = { type: 'error', texte: 'Renseignez : ' + manq.join(', ') + '.' }; rendre(); return; }
+      var champs = Object.assign(champsReunionComplets(b), { Statut: L.statutsReunion[0] });
       ecrire([['AddRecord', 'Reunions', null, champs]]).then(function (res) {
         var nid = res.retValues[0];
         // Les points reportés de la réunion d'origine sont proposés à la nouvelle.
@@ -940,7 +1082,9 @@
     if (type === 'infos') {
       b = brouillon('infos-' + rid);
       if (!String(b.Titre || '').trim()) { etat.alerte = { type: 'error', texte: 'Indiquez un titre.' }; rendre(); return; }
-      executer([['UpdateRecord', 'Reunions', rid, champsReunion(b)]], 'Informations enregistrées.', function () { delete etat.brouillons['infos-' + rid]; });
+      var manq2 = manquesPerso(b);
+      if (manq2.length) { etat.alerte = { type: 'error', texte: 'Renseignez : ' + manq2.join(', ') + '.' }; rendre(); return; }
+      executer([['UpdateRecord', 'Reunions', rid, champsReunionComplets(b)]], 'Informations enregistrées.', function () { delete etat.brouillons['infos-' + rid]; });
       return;
     }
     if (type === 'point') {

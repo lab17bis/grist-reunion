@@ -2,6 +2,14 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-26 (champs supplémentaires)
+
+### Ajouté
+- Champs supplémentaires des réunions (Configurer › Réglages) : texte court ou long, choix dans une liste, date ou nombre, obligatoires ou non. Chaque champ crée une colonne dans `Reunions` à l'enregistrement des réglages ; il apparaît dans le formulaire de la réunion et dans le compte rendu.
+
+### Inchangé
+- Sans champ supplémentaire, les formulaires et le compte rendu sont identiques à avant.
+
 ## 2026-11-26 (documentation)
 
 ### Corrigé

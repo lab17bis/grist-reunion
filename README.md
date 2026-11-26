@@ -33,11 +33,13 @@ Le widget s'ouvre sur une barre d'onglets : *Réunions* (l'outil), puis *Réglag
 
 Les réglages sont enregistrés en JSON dans la **description de la colonne `Config_reunion`** de la table `Reunions`. Ne supprimez pas cette colonne.
 
+La section *Champs supplémentaires des réunions* permet d'ajouter ses propres champs à la fiche d'une réunion (texte court ou long, choix dans une liste, date, nombre ; obligatoires ou non). Chaque champ devient une colonne de la table `Reunions`, créée à l'enregistrement des réglages ; il apparaît dans le formulaire de la réunion et dans le compte rendu. Retirer un champ des réglages ne supprime ni la colonne ni ses données.
+
 ## Modèle de données
 
 | Table | Colonnes |
 | --- | --- |
-| `Reunions` | `Titre`, `Instance` (choix), `Date` (date), `Heure` (texte, « 09:30 »), `Duree_prevue` (entier, minutes), `Lieu`, `Animation`, `Secretariat`, `Participants`, `Excuses`, `Objectif`, `Statut` (choix), `Config_reunion` |
+| `Reunions` | `Titre`, `Instance` (choix), `Date` (date), `Heure` (texte, « 09:30 »), `Duree_prevue` (entier, minutes), `Lieu`, `Animation`, `Secretariat`, `Participants`, `Excuses`, `Objectif`, `Statut` (choix), vos champs supplémentaires éventuels (une colonne chacun), `Config_reunion` |
 | `Points` | `Reunion` (référence), `Titre`, `Description`, `Type` (choix), `Duree` (entier, minutes), `Porteur`, `Statut` (Proposé, Retenu, Reporté, Écarté), `Ordre` (nombre), `Notes`, `Traite` (case à cocher), `Propose_par` et `Propose_le` (remplis par Grist à la création : `user.Name` et `NOW()`) |
 | `Decisions` | `Reunion` (référence), `Point` (référence), `Texte` |
 | `Actions_reunion` | `Reunion` (référence), `Point` (référence), `Intitule`, `Responsable` (texte), `Echeance` (date), `Etat` (choix) |

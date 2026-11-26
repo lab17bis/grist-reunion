@@ -95,3 +95,6 @@ body { background: var(--background-default-grey); color: var(--text-default-gre
 }
 .rn-nav__config { margin-left: auto; }
 #rn-coque #rn-app { padding-left: 0; padding-right: 0; }
+
+/* Champs supplémentaires des réunions (réglages) */
+.rn-champ-perso { border: 1px solid var(--border-default-grey, #ddd); border-radius: .25rem; padding: .75rem 1rem; margin-bottom: .75rem; }
