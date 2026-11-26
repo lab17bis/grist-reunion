@@ -68,7 +68,7 @@ Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas.
 
 ## Limites
 
-- Fonctionne uniquement dans Grist, avec des personnes connectées. Pas de page publique.
+- L'outil de travail fonctionne uniquement dans Grist, avec des personnes connectées. Une page publique en lecture seule existe pour le compte rendu diffusé (voir « Page publique »).
 - Deux personnes qui modifient les notes du même point en même temps : la dernière enregistrée l'emporte.
 - Le responsable d'une action est un texte libre, pas une référence à un annuaire.
 - Aucun audit RGAA n'a été mené.

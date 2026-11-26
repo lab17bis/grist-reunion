@@ -2,6 +2,11 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-26 (documentation)
+
+### Corrigé
+- README : la rubrique « Limites » affirmait qu'il n'y avait pas de page publique, alors que la page publique du compte rendu diffusé existe. Aucun changement de code.
+
 ## 2026-11-25 (mention de conception)
 
 ### Ajouté
