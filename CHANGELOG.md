@@ -2,6 +2,14 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-26 (tables déjà présentes dans le document)
+
+### Corrigé
+- Si le document contient déjà une table du même nom que celles de l'outil (`Reunions`, `Points`, `Decisions`, `Actions_reunion`), créée à la main ou par un autre outil, le widget la croyait prête et n'ajoutait pas les colonnes qui lui manquent : les informations ne s'affichaient pas et les enregistrements échouaient, sans message. Le widget signale maintenant les colonnes manquantes et propose « Ajouter les colonnes manquantes ». L'installation complète aussi les tables déjà présentes. Rien n'est renommé ni supprimé.
+
+### Ajouté
+- Conseil affiché : si une de vos colonnes contient déjà l'information sous un autre nom, renommez-la dans Grist avec le nom attendu, ses données seront reprises.
+
 ## 2026-11-26 (style commun de configuration)
 
 ### Corrigé
