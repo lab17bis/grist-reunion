@@ -92,6 +92,7 @@ Plusieurs outils de la même famille peuvent travailler dans un même document G
 - **Aucun outil ne supprime ni ne renomme** une table ou une colonne qu'il n'a pas créée.
 - **Les autres tables portent des noms propres à chaque outil**, pour éviter les collisions (par exemple `Actions` pour grist-projet, `Actions_reunion` pour grist-reunion). Les réglages sont rangés dans la description d'une colonne technique propre à l'outil (`Config_…`).
 - **Identifier la personne connectée** : un widget ne connaît pas l'adresse de la personne connectée. Les colonnes « créé par » utilisent une formule `user.Email` calculée à la création. Seul un outil qui doit relier la personne connectée à sa fiche crée la table `Comptes`.
+- **Une seule table `Reunions`**, celle de cet outil. Un outil de suivi de projets s'y branche avec deux colonnes facultatives : `Projet` (référence à `Projets`) et `Notes`. Si elles existent, le formulaire d'une réunion propose « Projet lié » et « Notes », et le compte rendu indique le projet.
 
 Ce que fait cet outil : Il ne crée pas de table de personnes. Si `Personnes` existe, ses noms sont proposés dans les champs Animation, Secrétariat, Participants, Qui présente ? et Responsable.
 

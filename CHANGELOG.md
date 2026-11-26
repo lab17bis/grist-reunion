@@ -2,6 +2,15 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-26 (réunion rattachée à un projet)
+
+### Ajouté
+- Si la table `Reunions` a une colonne `Projet` (référence à `Projets`, ajoutée par grist-projet) et que la table `Projets` existe, le formulaire d'une réunion propose « Projet lié » ; le compte rendu l'indique. Une colonne `Notes` éventuelle est proposée en saisie.
+- Les réunions créées depuis l'onglet « Rendez-vous » d'un projet s'ouvrent ici comme les autres.
+
+### Inchangé
+- Sans ces colonnes, les formulaires et le compte rendu sont identiques à avant.
+
 ## 2026-11-26 (champs supplémentaires)
 
 ### Ajouté

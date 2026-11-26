@@ -124,6 +124,7 @@
         });
       });
       data.Personnes = json.Personnes || [];
+      data.Projets = json.Projets || [];
     });
   }
 
@@ -141,7 +142,9 @@
       }).catch(function () { appliquerReglages({}); });
     // Table Personnes partagée avec les autres outils (facultative) : ses noms sont proposés à la saisie.
     var personnes = grist.docApi.fetchTable('Personnes').then(function (c) { data.Personnes = lignesDepuisColonnes(c); }).catch(function () { data.Personnes = []; });
-    return Promise.all([config, personnes].concat(TABLES.map(function (t) {
+    // Table Projets de l'outil de suivi de projets (facultative) : proposée pour rattacher une réunion à un projet.
+    var projets = grist.docApi.fetchTable('Projets').then(function (c) { data.Projets = lignesDepuisColonnes(c); }).catch(function () { data.Projets = []; });
+    return Promise.all([config, personnes, projets].concat(TABLES.map(function (t) {
       return grist.docApi.fetchTable(t).then(function (c) { data[t] = lignesDepuisColonnes(c); }).catch(function () { data[t] = []; });
     })));
   }
@@ -346,8 +349,23 @@
       champ(p + '-part', 'Participants', b.Participants, { multiligne: true, lignes: 2, aide: 'Noms séparés par des virgules ou des retours à la ligne.', attrs: a('Participants'), classe: 'rn-large' }) +
       ajoutParticipants(p) +
       (p === 'i' ? champ(p + '-exc', 'Excusés', b.Excuses, { multiligne: true, lignes: 2, attrs: a('Excuses'), classe: 'rn-large' }) : '') +
+      champProjetLie(p, b, a) +
+      (aColonne('Reunions', 'Notes') ? champ(p + '-notes', 'Notes', b.Notes || '', { multiligne: true, lignes: 3, attrs: a('Notes'), classe: 'rn-large' }) : '') +
       champsPersoFormulaire(p, b, attrs) +
       '</div>';
+  }
+
+  // Colonne Projet de la table Reunions, partagée avec l'outil de suivi de projets : une réunion peut être rattachée à un projet.
+  function nomProjet(r) {
+    var x = r && r.Projet ? (data.Projets || []).filter(function (y) { return y.id === num(r.Projet); })[0] : null;
+    return x ? String(x.Titre || '').trim() : '';
+  }
+  function champProjetLie(p, b, a) {
+    var projets = aColonne('Reunions', 'Projet') ? (data.Projets || []).filter(function (x) { return String(x.Titre || '').trim(); }) : [];
+    if (!projets.length) return '';
+    return '<div class="fr-select-group rn-large"><label class="fr-label" for="' + p + '-projet">Projet lié<span class="fr-hint-text">Facultatif. La réunion apparaît alors dans l\'onglet Rendez-vous du projet.</span></label>' +
+      '<select class="fr-select" id="' + p + '-projet" ' + a('Projet') + '><option value="">— Aucun —</option>' +
+      projets.map(function (x) { return '<option value="' + x.id + '"' + (num(b.Projet) === x.id ? ' selected' : '') + '>' + esc(x.Titre) + '</option>'; }).join('') + '</select></div>';
   }
 
   // Liste déroulante qui ajoute une personne de la table Personnes au champ Participants.
@@ -361,9 +379,12 @@
 
   function manquesPerso(b) { return champsPerso().filter(function (c) { return c.requis && (b[c.id] === undefined || b[c.id] === null || String(b[c.id]).trim() === ''); }).map(function (c) { return '« ' + c.label + ' »'; }); }
   function champsReunion(b) {
-    return { Titre: String(b.Titre || '').trim(), Instance: b.Instance || '', Date: typeof b.Date === 'number' ? b.Date : saisieVersDate(b.Date),
+    var plus = {};
+    if (aColonne('Reunions', 'Projet')) plus.Projet = num(b.Projet) || 0;
+    if (aColonne('Reunions', 'Notes')) plus.Notes = b.Notes || '';
+    return Object.assign(plus, { Titre: String(b.Titre || '').trim(), Instance: b.Instance || '', Date: typeof b.Date === 'number' ? b.Date : saisieVersDate(b.Date),
       Heure: b.Heure || '', Duree_prevue: num(b.Duree_prevue) || null, Lieu: b.Lieu || '', Animation: b.Animation || '', Secretariat: b.Secretariat || '',
-      Participants: b.Participants || '', Objectif: b.Objectif || '', Excuses: b.Excuses || '' };
+      Participants: b.Participants || '', Objectif: b.Objectif || '', Excuses: b.Excuses || '' });
   }
   function champsReunionComplets(b) {
     return Object.assign(champsReunion(b), champsPersoValeurs(b));
@@ -541,6 +562,7 @@
     h += '<article class="rn-cr"><h2 class="fr-h4">Compte rendu – ' + esc(r.Titre) + '</h2>' +
       '<dl class="rn-cr__infos"><div><dt>Date</dt><dd>' + esc(dateTexte(r.Date, true)) + (r.Heure ? ' à ' + esc(r.Heure) : '') + '</dd></div>' +
       (r.Lieu ? '<div><dt>Lieu</dt><dd>' + esc(r.Lieu) + '</dd></div>' : '') +
+      (nomProjet(r) ? '<div><dt>Projet</dt><dd>' + esc(nomProjet(r)) + '</dd></div>' : '') +
       (r.Animation ? '<div><dt>Animation</dt><dd>' + esc(r.Animation) + '</dd></div>' : '') +
       (r.Secretariat ? '<div><dt>Secrétariat</dt><dd>' + esc(r.Secretariat) + '</dd></div>' : '') +
       (r.Participants ? '<div><dt>Participants</dt><dd>' + texteMultiligne(r.Participants) + '</dd></div>' : '') +

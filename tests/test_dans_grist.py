@@ -56,6 +56,34 @@ with sync_playwright() as p:
     cols = mock(pg)['tables']['Reunions']['colonnes']
     verifier('réglages : la colonne du nouveau champ est créée (type Numeric)', 'Budget_estime' in cols and cols['Budget_estime'].get('type') == 'Numeric')
     pg.close()
+    # --- table Reunions partagée avec grist-projet : colonnes Projet et Notes
+    pg, f = ouvrir(b, dict(m, tables=doc), erreurs)
+    f.locator('.rn-cartes').first.wait_for()
+    f.locator('a[href="#/nouvelle"]').first.click(); f.locator('#n-titre').wait_for()
+    verifier('projet lié : sans colonne Projet ni table Projets, ni sélecteur ni notes', f.locator('#n-projet').count() == 0 and f.locator('#n-notes').count() == 0)
+    pg.close()
+    doc2 = json.loads(json.dumps(doc))
+    doc2['Projets'] = {'colonnes': {'Titre': {'type': 'Text'}}, 'lignes': [{'id': 1, 'Titre': 'Projet Alpha'}, {'id': 2, 'Titre': 'Projet Beta'}]}
+    doc2['Reunions']['colonnes']['Projet'] = {'type': 'Ref:Projets'}
+    doc2['Reunions']['colonnes']['Notes'] = {'type': 'Text'}
+    doc2['Reunions']['colonnes']['Salle'] = {'type': 'Text'}
+    pg, f = ouvrir(b, dict(m, tables=doc2), erreurs)
+    f.locator('.rn-cartes').first.wait_for()
+    f.locator('a[href="#/nouvelle"]').first.click(); f.locator('#n-titre').wait_for()
+    verifier('projet lié : sélecteur de projets et notes proposés', f.locator('#n-projet option').count() == 3 and f.locator('#n-notes').count() == 1)
+    f.locator('#n-titre').fill('Rencontre projet'); f.locator('#n-Salle').fill('S1')
+    f.locator('#n-projet').select_option('2'); f.locator('#n-notes').fill('Notes libres')
+    f.get_by_role('button', name='Créer la réunion').click(); pg.wait_for_timeout(800)
+    cree = [r for r in mock(pg)['tables']['Reunions']['lignes'] if r.get('Titre') == 'Rencontre projet']
+    verifier('projet lié : Projet et Notes enregistrés dans la table Reunions', len(cree) == 1 and cree[0].get('Projet') == 2 and cree[0].get('Notes') == 'Notes libres')
+    pg.close()
+    # une réunion créée côté suivi de projets (Projet + Notes, sans le reste) s'ouvre sans erreur
+    doc2['Reunions']['lignes'].append({'id': 99, 'Projet': 1, 'Titre': 'Rendez-vous côté projet', 'Date': 1796860800, 'Notes': 'Note simple'})
+    pg, f = ouvrir(b, dict(m, tables=doc2), erreurs)
+    f.locator('.rn-cartes').first.wait_for()
+    f.get_by_text('Rendez-vous côté projet').first.click(); pg.wait_for_timeout(500)
+    verifier('projet lié : une réunion créée côté projets s\'ouvre', f.locator('h1:has-text("Rendez-vous côté projet")').count() == 1)
+    pg.close()
     verifier('aucune erreur JavaScript', not erreurs)
     b.close()
 print(f'{ok} réussis, {ko} échoués')
