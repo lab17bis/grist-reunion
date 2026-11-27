@@ -4,7 +4,8 @@
 .cl-nom { margin: 0; font-weight: 700; }
 .cl-barre .fr-segmented { margin: 0; }
 .cl-barre .cl-actions { margin: 0; align-items: center; }
-.cl-barre .cl-actions > li { margin: 0; padding: 0; display: flex; align-items: center; } /* bouton Enregistrer aligné sur la barre d'onglets (2026-11-27) */
+.cl-barre .cl-actions > li, .cl-barre .cl-actions .fr-btn { margin: 0; }
+.cl-barre .cl-actions > li { padding: 0; display: flex; align-items: center; } /* bouton Enregistrer aligné sur la barre d'onglets (2026-11-27) */
 .cl-barre .fr-segmented { margin-left: auto; margin-right: auto; } /* onglets toujours centrés */
 .cl-message:empty { display: none; }
 .cl-message { margin-bottom: 1rem; }
