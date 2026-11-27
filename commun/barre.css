@@ -22,3 +22,7 @@
 /* Accès aux réglages : la barre suffit, les anciens liens et boutons « Réglages » ou « Configurer » de l'outil sont masqués. */
 a[href="#/reglages"], a[href="#reglages"], li:has(> a[href="#/reglages"]), #gc-reglages, #gg-reglages { display: none !important; }
 .cl-mode-page .ed-message .fr-alert--info, .cl-mode-page .ed-message .fr-alert--success { display: none; }
+
+/* Widget sans accès au document : seul le message reste visible. */
+.lab-sans-acces > *:not(.lab-acces) { display: none !important; }
+.lab-acces { margin: 1rem; }

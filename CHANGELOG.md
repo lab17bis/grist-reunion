@@ -2,6 +2,9 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-27 (accès au document)
+- Dans Grist, quand le widget ne peut pas lire le document (accès complet non accordé, ou compte sans droit de lecture), un message le dit et indique quoi faire, au lieu d'un outil vide ou d'un écran d'installation. Contrôle commun, dans `commun/barre.js`.
+
 ## 2026-11-27 (Réglages › Données)
 - Nouvelle rubrique *Réglages › Données* (fichier partagé `commun/donnees.js`) : tables partagées avec les autres outils, état des règles d'accès, colonnes de lien.
 - Règle d'accès proposée : `Points.Propose_par` et `Points.Propose_le` ne se modifient pas, sauf par les propriétaires. Posée à l'installation des tables ; bouton dans les documents existants. Aucune règle existante n'est modifiée.

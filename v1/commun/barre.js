@@ -193,6 +193,41 @@
     };
   }
 
+  // Contrôle d'accès commun : dans Grist, si le widget ne peut pas lire le document (accès complet non accordé,
+  // ou compte sans droit de lecture), un message remplace l'outil au lieu d'un écran vide ou d'un écran d'installation.
+  // Ignoré hors de Grist (page publique, démonstration) et pour les outils qui gèrent eux-mêmes ce cas (window.LAB_ACCES_GERE).
+  var MESSAGE_ACCES = "Ce widget ne peut pas lire le document. Si vous gérez ce document : dans le panneau de droite de Grist (widget personnalisé, rubrique Accès), accordez l'accès complet au document. Sinon, votre compte n'a pas le droit de lire ces données : demandez un accès à la personne qui gère le document.";
+  function signalerSansAcces(detail) {
+    if (!global.document || document.querySelector(".lab-acces")) return;
+    var d = document.createElement("div");
+    d.className = "fr-alert fr-alert--warning lab-acces";
+    d.setAttribute("role", "alert");
+    d.innerHTML = "<h2 class=\"fr-alert__title\">Accès au document impossible</h2><p></p>";
+    d.querySelector("p").textContent = MESSAGE_ACCES + (detail ? " (" + detail + ")" : "");
+    document.body.insertBefore(d, document.body.firstChild);
+    document.body.classList.add("lab-sans-acces");
+  }
+  function controlerAcces() {
+    try {
+      if (global.self === global.top || global.LAB_ACCES_GERE) return;
+      if (global.GristPublic && global.GristPublic.actif) return;
+      if (/[?&](public|integre)=1/.test(global.location.search)) return;
+      if (!global.grist || !global.grist.docApi) return;
+    } catch (e) { return; }
+    var fini = false;
+    // Sans réponse de Grist (page intégrée ailleurs que dans Grist), on ne dit rien.
+    setTimeout(function () { fini = true; }, 10000);
+    global.grist.docApi.fetchTable("_grist_Tables").then(function () { fini = true; }, function (err) {
+      if (fini) return;
+      fini = true;
+      signalerSansAcces(String((err && err.message) || err || ""));
+    });
+  }
+  if (global.document) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { setTimeout(controlerAcces, 1500); });
+    else setTimeout(controlerAcces, 1500);
+  }
+
   global.BarreLab = {
     creer: creer,
     mode: mode,
@@ -201,6 +236,7 @@
     modeHtml: modeHtml,
     brancherMode: brancherMode,
     pageUsage: pageUsage,
-    lienEditer: lienEditer
+    lienEditer: lienEditer,
+    signalerSansAcces: signalerSansAcces
   };
 })(typeof window !== "undefined" ? window : globalThis);
