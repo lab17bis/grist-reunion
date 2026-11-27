@@ -2,6 +2,12 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-27 (cohérence de la barre de réglages)
+
+### Corrigé
+
+- Le bouton Enregistrer est aligné sur la barre d'onglets, les onglets sont centrés et la pastille « Enregistré / Non enregistré » reste visible sur toutes les pages.
+
 ## 2026-11-26 (tables déjà présentes dans le document)
 
 ### Corrigé

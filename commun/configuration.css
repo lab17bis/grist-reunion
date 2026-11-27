@@ -3,7 +3,9 @@
 .cl-titre { display: flex; gap: .5rem; align-items: center; }
 .cl-nom { margin: 0; font-weight: 700; }
 .cl-barre .fr-segmented { margin: 0; }
-.cl-barre .cl-actions { margin: 0; }
+.cl-barre .cl-actions { margin: 0; align-items: center; }
+.cl-barre .cl-actions > li { margin: 0; padding: 0; display: flex; align-items: center; } /* bouton Enregistrer aligné sur la barre d'onglets (2026-11-27) */
+.cl-barre .fr-segmented { margin-left: auto; margin-right: auto; } /* onglets toujours centrés */
 .cl-message:empty { display: none; }
 .cl-message { margin-bottom: 1rem; }
 .cl-panneau { max-width: 48rem; padding: 1.5rem; background: var(--background-default-grey); border: 1px solid var(--border-default-grey); }
@@ -18,5 +20,5 @@
 @media print { .cl-acces { display: none !important; } }
 
 /* Onglet Vue : l'outil prend toute la place, sans les boutons d'enregistrement (ajout 2026-11-24) */
-.cl-sur-vue .cl-actions, .cl-sur-vue .cl-titre [id$="-etat"] { display: none; } /* seul le badge « Enregistré » de la barre (correctif 2026-11-26 : masquait aussi le filtre f-etat) */
+.cl-sur-vue .cl-actions { display: none; } /* la pastille « Enregistré » reste visible sur toutes les pages (2026-11-27) */
 .cl-section[data-cl-section="vue"] { min-width: 0; }
