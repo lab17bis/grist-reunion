@@ -149,15 +149,18 @@
       var vues = {};
       (opt.tables || []).forEach(function (t) {
         var g = regles.filter(function (r) { return r.table === t && r.cols === "*"; });
-        vues[t] = !table(meta, t) ? "table absente" : lib[etatRessource(acl, t, "*", g.length ? g : [{ memo: "\u0000" }])] + (g.length ? "" : " (aucune règle proposée par l'outil)");
+        var gc = regles.filter(function (r) { return r.table === t && r.cols !== "*"; });
+        vues[t] = !table(meta, t) ? "table absente" : lib[etatRessource(acl, t, "*", g.length ? g : [{ memo: "\u0000" }])] + " sur la table" +
+          (gc.length ? " ; colonnes " + gc[0].cols.split(",").join(", ") + " : " + lib[etatRessource(acl, t, gc[0].cols, gc)] : "") +
+          (g.length || gc.length ? "" : " (l'outil n'en propose pas)");
       });
       h += "<ul class=\"fr-text--sm\">" + Object.keys(vues).map(function (t) { return "<li><code>" + esc(t) + "</code> : " + esc(vues[t]) + "</li>"; }).join("") + "</ul>";
       if (regles.length) {
         h += "<p class=\"fr-text--sm\">Règles proposées par l'outil (les propriétaires du document gardent tous les droits) :</p><ul class=\"fr-text--sm\">" +
-          regles.map(function (r) { return "<li><code>" + esc(r.table + (r.cols === "*" ? "" : "." + r.cols.split(",").join(", ")) ) + "</code> : " + esc(r.effet) + "</li>"; }).join("") + "</ul>";
+          regles.map(function (r) { return "<li><code>" + esc(r.table + (r.cols === "*" ? "" : "." + r.cols.split(",").join(", "))) + "</code> : " + esc(r.effet) + (table(meta, r.table) ? "" : " (table absente de ce document : la règle sera posée quand elle existera)") + "</li>"; }).join("") + "</ul>";
         var n = aInstaller(acl, meta, regles).length;
         h += n ? "<p class=\"fr-text--sm\">Les règles ne sont ajoutées que là où il n'y en a aucune ; les règles existantes ne sont pas modifiées. Grist recharge ensuite le document. Pour vérifier : <strong>Règles d'accès</strong>, puis <strong>Voir en tant que</strong> un éditeur ou un lecteur.</p>" +
-          "<button type=\"button\" class=\"fr-btn fr-btn--sm\" data-donnees=\"regles\">Installer les règles proposées (" + n + ")</button>"
+          "<p><button type=\"button\" class=\"fr-btn fr-btn--sm\" data-donnees=\"regles\">Installer les règles proposées (" + n + ")</button></p>"
           : "<p><span class=\"fr-badge fr-badge--success fr-badge--sm\">Rien à installer</span></p>";
       }
       if (opt.noteRegles) h += "<p class=\"fr-text--sm\">" + opt.noteRegles + "</p>";
