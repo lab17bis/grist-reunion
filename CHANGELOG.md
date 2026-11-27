@@ -2,6 +2,9 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-27 (barre stable)
+- Barre de réglages : la place du bouton Enregistrer est réservée sur l'onglet de la vue, la barre ne saute plus d'un onglet à l'autre.
+
 ## 2026-11-27 (publication réservée)
 
 ### Ajouté
