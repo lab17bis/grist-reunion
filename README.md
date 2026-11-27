@@ -29,7 +29,9 @@ Ensuite, invitez l'équipe dans le document (*Partager*), en éditeur pour propo
 
 ## Le régler
 
-Le widget s'ouvre sur une barre d'onglets : *Réunions* (l'outil), puis *Réglages* (les listes de valeurs et la durée proposée par défaut pour un point), *En-tête et pied*, *Aperçu* (le rendu avec les réglages en cours) et *Publication* (qui peut utiliser l'outil, adresse du widget). Elle regroupe l'en-tête et le pied de page, les listes de valeurs (instances, étapes d'une réunion, types de points, états des actions) et la durée proposée par défaut pour un point. Les choix des colonnes Grist sont mis à jour en même temps.
+La barre de l'éditeur est commune à tous les widgets : nom du widget et statut d'enregistrement à gauche, onglets *Réglages*, *En-tête et pied*, *Aperçu* et *Publication* au centre, bouton *Enregistrer* à droite. L'outil s'utilise dans l'onglet *Aperçu*, ouvert par défaut, avec son en-tête et son pied de page. *Réglages* regroupe l'en-tête et le pied de page, les listes de valeurs (instances, étapes d'une réunion, types de points, états des actions) et la durée proposée par défaut pour un point. Les choix des colonnes Grist sont mis à jour en même temps.
+
+**Éditeur du widget ou page d'usage, avec le même lien.** Chaque vue Grist choisit ce qu'elle affiche (onglet *Publication*, rubrique *Affichage de cette vue Grist*) : l'**éditeur du widget** (affichage par défaut) ou la **page d'usage** (l'outil avec son en-tête et son pied de page, sans barre de réglages ; un lien *Éditer le widget*, en bas de page, rouvre l'éditeur). Pour avoir les deux dans un document, ajoutez deux vues Personnalisées avec la même adresse. Ce choix n'est pas une protection : les droits restent ceux du document (Partager, Permissions avancées).
 
 Les réglages sont enregistrés en JSON dans la **description de la colonne `Config_reunion`** de la table `Reunions`. Ne supprimez pas cette colonne.
 

@@ -50,7 +50,7 @@ with sync_playwright() as p:
     pg.goto(URL); pg.wait_for_selector('.rn-cartes')
     pg.locator('.cl-barre label', has_text='Aperçu').click(); pg.wait_for_timeout(600)
     verifier('aperçu réel : l\'outil est dans le cadre de l\'aperçu', pg.locator('.cl-apercu #rn-app .rn-cartes').count() >= 1)
-    pg.locator('.cl-barre label').first.click(); pg.wait_for_timeout(400)
+    pg.locator('.cl-barre .cl-onglets label', has_text='Réglages').click(); pg.wait_for_timeout(400)
     verifier('aperçu quitté : l\'outil est revenu dans son onglet', pg.locator('.cl-apercu #rn-app').count() == 0 and pg.locator('#rn-app .rn-cartes').count() >= 1)
     verifier('aucune erreur JavaScript', not erreurs)
     if erreurs: print(erreurs)

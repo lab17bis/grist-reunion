@@ -89,6 +89,8 @@
     onRecord: function (f) { abonnes.record.push(f); },
     onOptions: function (f) { abonnes.options.push(f); },
     setOptions: function (o) { M.options = copie(o); return Promise.resolve(); },
+    getOption: function (k) { return Promise.resolve((M.options || {})[k]); },
+    setOption: function (k, v) { M.options = M.options || {}; M.options[k] = v; return Promise.resolve(); },
     setCursorPos: function (p) { M.curseur = p; return Promise.resolve(); },
     mapColumnNames: function (recs) {
       var m = M.mapping; if (!m) return null;

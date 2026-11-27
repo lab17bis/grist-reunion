@@ -1,25 +1,16 @@
-/* Page de configuration commune (ConfigLab). */
-.cl-barre { display: flex; flex-wrap: wrap; gap: .75rem 1rem; align-items: center; justify-content: space-between; padding: .5rem 1rem; margin-bottom: 1rem; background: var(--background-default-grey); border: 1px solid var(--border-default-grey); }
-.cl-titre { display: flex; gap: .5rem; align-items: center; }
-.cl-nom { margin: 0; font-weight: 700; }
-.cl-barre .fr-segmented { margin: 0; }
-.cl-barre .cl-actions { margin: 0; align-items: center; }
-.cl-barre .cl-actions > li, .cl-barre .cl-actions .fr-btn { margin: 0; }
-.cl-barre .cl-actions > li { padding: 0; display: flex; align-items: center; } /* bouton Enregistrer aligné sur la barre d'onglets (2026-11-27) */
-.cl-barre .fr-segmented { margin-left: auto; margin-right: auto; } /* onglets toujours centrés */
+/* Page de configuration commune (ConfigLab). La barre elle-même est dans barre.css (BarreLab). */
 .cl-message:empty { display: none; }
 .cl-message { margin-bottom: 1rem; }
+.cl-config > .fr-notice { margin: 0 0 1rem; }
 .cl-panneau { max-width: 48rem; padding: 1.5rem; background: var(--background-default-grey); border: 1px solid var(--border-default-grey); }
 .cl-section[hidden] { display: none; }
+.cl-section[data-cl-section="vue"] { display: none; }
 .cl-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8125rem; }
 .cl-apercu { border: 1px solid var(--border-default-grey); background: var(--background-default-grey); }
 .cl-apercu .pd-pied { margin-top: 0; }
 .cl-apercu__contenu { min-height: 8rem; }
+.cl-mode { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-default-grey); }
 
 /* Bouton d'accès à la configuration, placé en haut de l'outil (ajout 2026-11-24) */
 .cl-acces { text-align: right; margin: .5rem 0; }
 @media print { .cl-acces { display: none !important; } }
-
-/* Onglet Vue : l'outil prend toute la place, sans les boutons d'enregistrement (ajout 2026-11-24) */
-.cl-sur-vue .cl-actions { visibility: hidden; } /* place du bouton réservée : la barre ne saute plus (2026-11-27) */ /* la pastille « Enregistré » reste visible sur toutes les pages (2026-11-27) */
-.cl-section[data-cl-section="vue"] { min-width: 0; }

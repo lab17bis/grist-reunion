@@ -45,8 +45,7 @@ with sync_playwright() as p:
     # --- Réglages : ajout d'un champ, création de la colonne à l'enregistrement
     pg, f = ouvrir(b, m, erreurs)
     f.locator('[data-installer=exemple]').click(); f.locator('.rn-cartes').first.wait_for()
-    f.get_by_role('button', name='Configurer').first.click() if f.get_by_role('button', name='Configurer').count() else f.get_by_text('Configurer').first.click()
-    f.get_by_role('tab', name='Réglages').click() if f.get_by_role('tab', name='Réglages').count() else f.get_by_text('Réglages', exact=True).first.click()
+    f.locator('.cl-barre .cl-onglets label', has_text='Réglages').click()
     f.locator('#nc-label').wait_for()
     f.locator('#nc-label').fill('Budget estimé'); f.locator('#nc-type').select_option('nombre')
     f.get_by_role('button', name='Ajouter ce champ').click()

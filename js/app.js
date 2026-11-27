@@ -815,7 +815,7 @@
     brouillonReglages = JSON.parse(JSON.stringify(reglages || {}));
     brouillonReglages.page = brouillonReglages.page || { marque: '', titre: 'Réunions', pied: { accessibilite: '' } };
     configLab = window.ConfigLab.monter(z, {
-      nom: 'Réunions',
+      nom: 'Widget réunion',
       vue: { libelle: 'Réunions', element: app },
       ongletInitial: route().vue === 'reglages' ? 'reglages' : 'vue',
       page: brouillonReglages.page,

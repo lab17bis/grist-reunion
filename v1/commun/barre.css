@@ -1,0 +1,24 @@
+/* Barre commune de l'éditeur des widgets (BarreLab). Fichier partagé : même copie dans chaque dépôt. */
+.cl-barre { position: sticky; top: 0; z-index: 750; display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; padding: .5rem 1rem; margin-bottom: 1rem; background: var(--background-default-grey); border-bottom: 1px solid var(--border-default-grey); }
+.cl-titre { display: flex; gap: .5rem; align-items: center; flex: 1 1 0; min-width: 12rem; }
+.cl-nom { margin: 0; font-weight: 700; }
+.cl-titre .fr-badge { margin: 0; }
+.cl-onglets { flex: 0 1 auto; display: flex; justify-content: center; }
+.cl-barre .fr-segmented { margin: 0; }
+.cl-actions { flex: 1 1 0; display: flex; gap: .5rem; justify-content: flex-end; align-items: center; min-width: 10rem; }
+.cl-actions .fr-btn { margin: 0; white-space: nowrap; }
+.cl-sous { flex: 1 0 100%; display: flex; justify-content: center; padding-top: .25rem; border-top: 1px solid var(--border-default-grey); }
+.cl-sous[hidden] { display: none; }
+
+/* Éditeur : l'en-tête et le pied de page du widget ne s'affichent que dans l'onglet Aperçu. */
+.cl-mode-editeur #entete, .cl-mode-editeur #pied { display: none; }
+
+/* Page d'usage : pas de barre ; un lien discret en bas de page rouvre l'éditeur. */
+.cl-mode-page .cl-barre, .cl-mode-page .cl-config, .cl-mode-page .cl-avis-apercu { display: none !important; }
+.cl-editer { display: none; margin: 1rem auto; max-width: 78rem; padding: 0 1rem; text-align: right; }
+.cl-mode-page .cl-editer { display: block; }
+@media print { .cl-barre, .cl-editer { display: none !important; } }
+
+/* Accès aux réglages : la barre suffit, les anciens liens et boutons « Réglages » ou « Configurer » de l'outil sont masqués. */
+a[href="#/reglages"], a[href="#reglages"], li:has(> a[href="#/reglages"]), #gc-reglages, #gg-reglages { display: none !important; }
+.cl-mode-page .ed-message .fr-alert--info, .cl-mode-page .ed-message .fr-alert--success { display: none; }

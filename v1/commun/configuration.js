@@ -1,13 +1,16 @@
 /*
  * Page de configuration commune aux widgets Grist du Lab 17 bis.
- * Un seul écran : réglages propres à l'outil, en-tête et pied de page, aperçu, publication.
+ * Éditeur du widget : la barre commune (commun/barre.js) avec Réglages, En-tête et pied, Aperçu, Publication.
+ * L'outil s'utilise dans l'Aperçu (onglet ouvert par défaut). Chaque vue Grist peut afficher, avec le même lien,
+ * l'éditeur ou la page d'usage seule (choix dans l'onglet Publication).
  *
  * ConfigLab.monter(conteneur, options)
  *   options.nom           : nom de l'outil (titre de la barre)
  *   options.page          : objet « page » (en-tête et pied) modifié sur place
- *   options.vue           : facultatif, { libelle, element } : premier onglet, qui contient l'outil lui-même.
- *                           L'élément (la zone principale de l'outil) est déplacé dans l'onglet ; la page s'ouvre dessus.
- *   options.onglets       : [{ id, libelle, rendre(zone) }] réglages propres à l'outil, affichés après la vue
+ *   options.vue           : facultatif, { libelle, element } : l'outil lui-même. L'élément (la zone principale de l'outil)
+ *                           s'affiche dans l'Aperçu, entre l'en-tête et le pied ; en page d'usage, il reste à sa place d'origine.
+ *   options.onglets       : [{ id, libelle, rendre(zone) }] réglages propres à l'outil : l'onglet « Réglages », avec des
+ *                           sous-onglets s'il y en a plusieurs
  *   options.apercu        : facultatif, function (zone, page) : montre un échantillon de l'outil sous l'en-tête.
  *                           Sans cette fonction, et si options.vue.element existe, l'aperçu est réel : l'outil lui-même
  *                           est déplacé entre l'en-tête et le pied de page, puis remis dans son onglet en quittant l'aperçu.
@@ -21,7 +24,7 @@
  *   options.libelleAnnuler: facultatif, texte du bouton secondaire (« Annuler » par défaut, par exemple « Fermer »)
  *   options.modifieInitial: facultatif, vrai pour ouvrir avec le badge « Modifications non enregistrées »
  *   options.surOnglet     : facultatif, function (id) : appelée à chaque changement d'onglet (utile pour redimensionner une carte ou un graphique)
- *   options.ongletInitial : facultatif, identifiant de l'onglet à ouvrir (utile quand l'écran est redessiné)
+ *   options.ongletInitial : facultatif, identifiant de l'onglet à ouvrir (« vue » ouvre l'Aperçu)
  * Renvoie { modifie(oui), message(type, texte), enregistre(oui), onglet(id), rafraichir(id), ongletActif(), estModifie() }.
  * rafraichir(id) redessine un onglet propre à l'outil (par exemple après un enregistrement).
  *
@@ -130,30 +133,42 @@
 
   function monter(conteneur, opt) {
     var id = "cl" + (++compteur);
+    var BL = global.BarreLab;
     var propres = (opt.onglets || []).map(function (o) { return o.id; });
-    var onglets = (opt.vue ? [{ id: "vue", libelle: opt.vue.libelle || "Vue" }] : [])
-      .concat((opt.onglets || []).map(function (o) { return { id: o.id, libelle: o.libelle, propre: o }; }))
+    // Onglets de la barre : Réglages (les rubriques propres à l'outil, en sous-onglets s'il y en a plusieurs),
+    // En-tête et pied, Aperçu, Publication. L'outil lui-même ne fait plus l'objet d'un onglet : il s'utilise dans l'Aperçu.
+    var reglages = (opt.onglets || []).length === 1 ? { id: opt.onglets[0].id, libelle: "Réglages" }
+      : { id: "_reglages", libelle: "Réglages", sous: (opt.onglets || []).map(function (o) { return { id: o.id, libelle: o.libelle }; }) };
+    var barreOnglets = ((opt.onglets || []).length ? [reglages] : [])
       .concat([{ id: "page", libelle: "En-tête et pied" }, { id: "apercu", libelle: "Aperçu" }, { id: "publication", libelle: "Publication" }]);
-    var actif = onglets[0].id;
-    if (opt.ongletInitial && onglets.some(function (o) { return o.id === opt.ongletInitial; })) { actif = opt.ongletInitial; }
+    var sections = (opt.vue ? ["vue"] : []).concat(propres).concat(["page", "apercu", "publication"]);
+    function normal(i) { return i === "vue" ? "apercu" : (i === "_reglages" ? (propres[0] || "page") : i); }
+    var actif = normal(opt.ongletInitial || (opt.vue ? "apercu" : (propres[0] || "page")));
+    if (sections.indexOf(actif) < 0) { actif = opt.vue ? "apercu" : sections[0]; }
+
+    // Place d'origine de l'outil : il y retourne en page d'usage.
+    var origine = opt.vue && opt.vue.element ? { parent: opt.vue.element.parentNode, suivant: opt.vue.element.nextSibling } : null;
 
     conteneur.classList.add("cl-config");
-    conteneur.classList.toggle("cl-sur-vue", actif === "vue");
     conteneur.innerHTML =
-      "<div class=\"cl-barre\"><div class=\"cl-titre\"><p class=\"cl-nom\">" + esc(opt.nom || "Configuration") + "</p>" +
-      "<p class=\"fr-badge fr-badge--sm fr-badge--success\" id=\"" + id + "-etat\">Enregistré</p></div>" +
-      "<fieldset class=\"fr-segmented fr-segmented--sm\"><legend class=\"fr-segmented__legend fr-sr-only\">Rubrique de la configuration</legend><div class=\"fr-segmented__elements\">" +
-      onglets.map(function (o, i) {
-        return "<div class=\"fr-segmented__element\"><input value=\"" + o.id + "\" type=\"radio\" id=\"" + id + "-o" + i + "\" name=\"" + id + "-onglet\"" + (o.id === actif ? " checked" : "") + "><label class=\"fr-label\" for=\"" + id + "-o" + i + "\">" + esc(o.libelle) + "</label></div>";
-      }).join("") + "</div></fieldset>" +
-      "<ul class=\"fr-btns-group fr-btns-group--inline fr-btns-group--sm cl-actions\">" +
-      (opt.surAnnuler ? "<li><button type=\"button\" class=\"fr-btn fr-btn--secondary\" data-cl-annuler>" + esc(opt.libelleAnnuler || "Annuler") + "</button></li>" : "") +
-      "<li><button type=\"button\" class=\"fr-btn\" data-cl-enregistrer>Enregistrer</button></li></ul></div>" +
       "<div class=\"cl-message\" id=\"" + id + "-message\" aria-live=\"polite\"></div>" +
-      onglets.map(function (o) { return "<section class=\"cl-section\" id=\"" + id + "-p-" + o.id + "\" data-cl-section=\"" + o.id + "\"" + (o.id === actif ? "" : " hidden") + "></section>"; }).join("");
+      sections.map(function (o) { return "<section class=\"cl-section\" id=\"" + id + "-p-" + o + "\" data-cl-section=\"" + o + "\"" + (o === actif ? "" : " hidden") + "></section>"; }).join("");
+    // La barre est le premier élément de l'écran.
+    var barre = BL.creer(conteneur, {
+      nom: opt.nom, onglets: barreOnglets, actif: actif, annuler: opt.surAnnuler ? (opt.libelleAnnuler || "Annuler") : null,
+      surChoix: function (i) { afficher(i); },
+      surEnregistrer: function () { opt.surEnregistrer(); },
+      surAnnuler: opt.surAnnuler
+    });
+    if (conteneur.parentNode && conteneur.parentNode === document.body) {
+      var evite = document.body.querySelector(":scope > a[href^='#']");
+      document.body.insertBefore(conteneur, evite ? evite.nextSibling : document.body.firstChild);
+      // Bandeau de démonstration : juste sous la barre.
+      var demo = document.body.querySelector(":scope > .fr-notice[id$='-demo']");
+      if (demo) { conteneur.insertBefore(demo, barre.element.nextSibling); }
+    }
 
     function zone(i) { return document.getElementById(id + "-p-" + i); }
-    var etat = document.getElementById(id + "-etat");
 
     if (opt.vue) {
       if (opt.vue.element) { zone("vue").appendChild(opt.vue.element); }
@@ -177,7 +192,7 @@
       pg.addEventListener("input", maj); md.addEventListener("change", maj);
     })();
 
-    // Aperçu réel : l'élément de l'outil voyage entre son onglet et l'aperçu (déplacé, jamais copié).
+    // Aperçu réel : l'élément de l'outil voyage entre sa section de rangement et l'aperçu (déplacé, jamais copié).
     var reel = !opt.apercu && !!(opt.vue && opt.vue.element);
     var dansApercu = false;
     function restituerVue() {
@@ -187,10 +202,15 @@
       if (opt.surApercu) { try { opt.surApercu(false); } catch (e) { /* sans effet */ } }
     }
 
+    function avisApercu() {
+      var a = zone("apercu").querySelector(".cl-avis-apercu");
+      if (a) { a.hidden = !modif; }
+    }
+
     function rendreApercu() {
       restituerVue();
       var z = zone("apercu");
-      z.innerHTML = "<div class=\"fr-notice fr-notice--info fr-mb-2w\"><div class=\"fr-notice__body\"><p class=\"fr-notice__title\">Aperçu avec les réglages en cours, même non enregistrés." + (reel ? " L'outil est réellement actif : ce que vous y faites s'applique au document." : "") + "</p></div></div>" +
+      z.innerHTML = "<div class=\"fr-notice fr-notice--info fr-mb-2w cl-avis-apercu\"" + (modif ? "" : " hidden") + "><div class=\"fr-notice__body\"><p class=\"fr-notice__title\">Aperçu avec les réglages en cours, pas encore enregistrés." + (reel ? " L'outil est réellement actif : ce que vous y faites s'applique au document." : "") + "</p></div></div>" +
         "<div class=\"cl-apercu\"><div data-cl=\"entete\"></div><main class=\"cl-apercu__contenu fr-container fr-py-4w\" data-cl=\"contenu\"></main><div data-cl=\"pied\"></div></div>";
       var r = global.PageDSFR ? global.PageDSFR.appliquer(opt.page, { entete: z.querySelector("[data-cl=entete]"), pied: z.querySelector("[data-cl=pied]"), accueil: "#" }) : null;
       if (r) { [r.entete, r.pied].forEach(function (n) { if (n) { n.removeAttribute("id"); Array.prototype.forEach.call(n.querySelectorAll("[id]"), function (x) { x.removeAttribute("id"); }); Array.prototype.forEach.call(n.querySelectorAll("a[href]"), function (a) { a.setAttribute("tabindex", "-1"); a.addEventListener("click", function (e) { e.preventDefault(); }); }); } }); }
@@ -204,21 +224,55 @@
       else { c.innerHTML = "<p class=\"fr-text--sm\">Les écrans de l'outil s'affichent entre cet en-tête et ce pied de page.</p>"; }
     }
 
+    // Page d'usage : l'outil retourne à sa place d'origine, sous l'en-tête du widget, sans barre.
+    var enPage = false;
+    function versPage() {
+      restituerVue();
+      enPage = true;
+      BL.pageUsage(true);
+      if (origine && origine.parent) { origine.parent.insertBefore(opt.vue.element, origine.suivant && origine.suivant.parentNode === origine.parent ? origine.suivant : null); }
+      BL.lienEditer(function () { versEditeur(propres[0] || "apercu"); });
+      if (opt.surOnglet) { try { opt.surOnglet("vue"); } catch (e) { /* sans effet */ } }
+    }
+    function versEditeur(i) {
+      enPage = false;
+      BL.pageUsage(false);
+      if (origine && opt.vue.element.parentNode !== zone("vue")) { zone("vue").appendChild(opt.vue.element); }
+      actif = null;
+      afficher(i || "apercu");
+      try { global.scrollTo(0, 0); } catch (e) { /* sans effet */ }
+    }
+
     function afficher(i) {
+      i = normal(i);
+      if (enPage) { if (i === "apercu") { return; } versEditeur(i); return; }
+      if (i === actif && i === "apercu" && dansApercu) { return; }
       actif = i;
+      barre.choisir(i);
       if (i !== "apercu") { restituerVue(); }
-      conteneur.classList.toggle("cl-sur-vue", i === "vue");
-      onglets.forEach(function (o, k) { zone(o.id).hidden = o.id !== i; var r = document.getElementById(id + "-o" + k); if (r) { r.checked = o.id === i; } });
+      sections.forEach(function (o) { zone(o).hidden = o !== i; });
       if (i === "apercu") { rendreApercu(); }
       if (i === "publication" && opt.publication && opt.publication.publier) { resultatPublier(zone("publication"), opt.publication.publier, id); }
       if (opt.surOnglet) { try { opt.surOnglet(i); } catch (e) { /* sans effet */ } }
     }
 
+    // Choix de l'affichage de cette vue Grist (éditeur ou page d'usage), en tête de l'onglet Publication.
+    var panneauPub = zone("publication").querySelector(".cl-panneau");
+    function blocMode(m) {
+      var ancien = panneauPub.querySelector(".cl-mode"); if (ancien) { ancien.parentNode.removeChild(ancien); }
+      panneauPub.insertAdjacentHTML("afterbegin", BL.modeHtml(id, m));
+      BL.brancherMode(panneauPub, id, function (choisi, ok) {
+        if (!ok) { message("warning", "Affichage appliqué pour cette fois seulement : Grist n'a pas enregistré le choix (droits insuffisants sur le document ?)."); }
+        if (choisi === "page") { versPage(); } else { message("success", "Cette vue Grist affiche l'éditeur du widget."); }
+      });
+    }
+    blocMode("editeur");
+
     var modif = false;
     function modifie(oui) {
       modif = !!oui;
-      etat.textContent = oui ? "Modifications non enregistrées" : "Enregistré";
-      etat.className = "fr-badge fr-badge--sm " + (oui ? "fr-badge--warning" : "fr-badge--success");
+      barre.etat(oui ? "Modifications non enregistrées" : "Enregistré", oui ? "warning" : "success");
+      avisApercu();
     }
 
     function message(type, texte) {
@@ -228,7 +282,6 @@
     }
 
     conteneur.addEventListener("change", function (ev) {
-      if (ev.target.name === id + "-onglet") { afficher(ev.target.value); return; }
       var sec = ev.target.closest && ev.target.closest("[data-cl-section]");
       if (sec && propres.indexOf(sec.getAttribute("data-cl-section")) >= 0) { modifie(true); }
     });
@@ -238,23 +291,24 @@
     });
     conteneur.addEventListener("click", function (ev) {
       var c = ev.target.closest("[data-cl-copier]");
-      if (c) { var champ = document.getElementById(c.getAttribute("data-cl-copier")); if (champ) { copier(champ.value, c); } return; }
-      if (ev.target.closest("[data-cl-enregistrer]")) { opt.surEnregistrer(); return; }
-      if (ev.target.closest("[data-cl-annuler]") && opt.surAnnuler) { opt.surAnnuler(); }
+      if (c) { var champ = document.getElementById(c.getAttribute("data-cl-copier")); if (champ) { copier(champ.value, c); } }
     });
 
     if (opt.modifieInitial) { modifie(true); }
-    if (actif === "apercu") { rendreApercu(); }
+    BL.pageUsage(false);
+    var depart = actif; actif = null; afficher(depart);
+    // Affichage enregistré pour cette vue Grist : page d'usage si la personne qui gère le document l'a choisi.
+    BL.mode().then(function (m) { blocMode(m); if (m === "page" && !opt.modifieInitial) { versPage(); } });
 
     return {
       modifie: modifie,
       enregistre: function () { modifie(false); },
       message: message,
-      onglet: afficher,
+      onglet: function (i) { if (enPage && normal(i) === "apercu") { return; } afficher(i); },
       rafraichir: function (i) {
         (opt.onglets || []).forEach(function (o) { if (o.id === i) { o.rendre(zone(o.id)); } });
       },
-      ongletActif: function () { return actif; },
+      ongletActif: function () { return enPage ? "vue" : actif; },
       estModifie: function () { return modif; }
     };
   }
