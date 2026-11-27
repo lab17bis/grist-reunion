@@ -808,6 +808,45 @@
     h += '<h2 class="fr-h5 fr-mt-3w">Autres réglages</h2>' + champ('rg-duree', 'Durée proposée par défaut pour un point (minutes)', b.dureeDefaut || 10, { type: 'number', attrs: 'min="1"' }) + blocChampsPerso() + '</div>';
     return h;
   }
+  // Réglages › Données (commun/donnees.js) : tables partagées, règles d'accès proposées, colonnes de lien.
+  // Rien n'est modifié sans un clic d'un propriétaire.
+  var PARTAGE = [['Reunions', 'suivi de projets (rendez-vous d\'un projet, colonne Projet)', 'réunions'],
+    [T_ACTIONS, 'management visuel (lit les actions, change leur état)', 'actions décidées en réunion'],
+    ['Personnes', 'annuaire (outil de référence), suivi de projets', 'noms proposés à la saisie, en lecture seule'],
+    ['Projets', 'suivi de projets (outil de référence)', 'rattacher une réunion à un projet, en lecture seule']];
+  // Pas de restriction de suppression des réunions : le suivi de projets crée et supprime aussi des lignes de Reunions (rendez-vous).
+  var REGLES_ACCES = [{ table: 'Points', cols: 'Propose_par,Propose_le', formule: 'user.Access != OWNER', droits: '-U',
+    memo: 'L’auteur et la date d’une proposition de point ne se modifient pas.', effet: 'l\'auteur et la date d\'une proposition ne se modifient pas (traçabilité de l\'ordre du jour)' }];
+  var LIENS = [window.DonneesLab ? DonneesLab.lienPersonne('Points', 'Porteur', 'relie la personne qui présente le point à sa fiche') : null,
+    window.DonneesLab ? DonneesLab.lienPersonne(T_ACTIONS, 'Responsable', 'relie la personne responsable de l\'action à sa fiche') : null,
+    window.DonneesLab ? DonneesLab.lienPersonne('Reunions', 'Animation', 'relie la personne qui anime à sa fiche') : null,
+    window.DonneesLab ? DonneesLab.lienPersonne('Reunions', 'Secretariat', 'relie le secrétariat de séance à sa fiche') : null,
+    { table: T_ACTIONS, col: 'Projet', type: 'Ref:Projets', cible: 'Projets', affichage: 'Titre', source: 'Reunion', requis: [['Reunions', 'Projet']],
+      formule: '$Reunion.Projet', effet: 'reprend le projet de la réunion : l\'action se rattache au même projet' }].filter(Boolean);
+  var aclDonnees = null;
+  function optionsDonnees() { return { demo: DEMO, tables: TABLES, partage: PARTAGE, regles: REGLES_ACCES, liens: LIENS }; }
+  function rendreDonnees(zone) {
+    if (!window.DonneesLab) { zone.innerHTML = ''; return; }
+    if (!DEMO && !aclDonnees) DonneesLab.lire().then(function (a) { aclDonnees = a; if (configLab) configLab.rafraichir('donnees'); });
+    zone.innerHTML = DonneesLab.html(aclDonnees, meta, optionsDonnees());
+    if (zone.getAttribute('data-branche')) return;
+    zone.setAttribute('data-branche', '1');
+    zone.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-donnees]');
+      if (!b || b.disabled) return;
+      b.disabled = true;
+      var regles = b.getAttribute('data-donnees') === 'regles';
+      (regles ? DonneesLab.installerRegles(aclDonnees, meta, REGLES_ACCES) : DonneesLab.ajouterLiens(meta, LIENS)).then(function (n) {
+        aclDonnees = null;
+        if (configLab) configLab.message('success', regles ? n + ' règle(s) d\'accès installée(s). Grist recharge le document.' : n + ' colonne(s) de lien ajoutée(s).');
+        return charger();
+      }).then(function () { rendre(); if (configLab) configLab.rafraichir('donnees'); }).catch(function (err) {
+        b.disabled = false;
+        if (configLab) configLab.message('error', 'Modification refusée par Grist : seuls les propriétaires du document le peuvent. (' + ((err && err.message) || err) + ')');
+      });
+    });
+  }
+
   var configLab = null, avantApercu = null;
   function monterCoque() {
     var z = document.getElementById('rn-coque');
@@ -819,7 +858,8 @@
       vue: { libelle: 'Réunions', element: app },
       ongletInitial: route().vue === 'reglages' ? 'reglages' : 'vue',
       page: brouillonReglages.page,
-      onglets: [{ id: 'reglages', libelle: 'Réglages', rendre: function (zone) { zone.innerHTML = reglagesPropres(); brancherReglages(zone); } }],
+      onglets: [{ id: 'reglages', libelle: 'Général', rendre: function (zone) { zone.innerHTML = reglagesPropres(); brancherReglages(zone); } },
+        { id: 'donnees', libelle: 'Données', rendre: rendreDonnees }],
       // Aperçu réel : l'outil lui-même s'affiche sous l'en-tête, avec les listes en cours de saisie (même non enregistrées).
       surApercu: function (ouvert) {
         if (ouvert && configLab && configLab.estModifie() && brouillonReglages) {
@@ -992,8 +1032,12 @@
         return grist.docApi.applyUserActions(ex);
       }) : null;
     }).then(function () {
-      etat.alerte = { type: 'success', texte: 'Outil installé.' + (avecExemple ? ' L\'exemple fictif est chargé : supprimez ses lignes quand vous voulez.' : '') };
+      etat.alerte = { type: 'success', texte: 'Outil installé.' + (avecExemple ? ' L\'exemple fictif est chargé : supprimez ses lignes quand vous voulez.' : '') + ' Les règles d\'accès proposées sont posées en même temps : vérifiez-les dans Réglages › Données.' };
       return charger();
+    }).then(function () {
+      // Règles d'accès proposées, posées en dernier : Grist recharge le document dès qu'elles changent.
+      if (DEMO || !window.DonneesLab) return null;
+      return DonneesLab.lire().then(function (acl) { return DonneesLab.installerRegles(acl, meta, REGLES_ACCES); }).catch(function () { return null; });
     }).then(rendre).catch(function (err) {
       etat.alerte = { type: 'error', texte: 'Installation impossible : seuls les propriétaires du document peuvent créer des tables. (' + ((err && err.message) || err) + ')' };
       rendre();

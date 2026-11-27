@@ -37,7 +37,7 @@ with sync_playwright() as p:
     pg.goto(URL + '#/actions'); pg.wait_for_selector('h1')
     verifier('suivi des actions : en retard', pg.get_by_role('heading', name='En retard').count() == 1)
     pg.select_option('#f-resp', 'Lou Petit')
-    verifier('filtre responsable', pg.locator('tbody tr').count() == 2)
+    verifier('filtre responsable', pg.locator('.rn-table tbody tr').count() == 2)
     pg.goto(URL + '#/nouvelle/2'); pg.wait_for_selector('form[data-form=nouvelle]')
     verifier('table Personnes : une seule liste de suggestions', pg.locator('datalist#rn-personnes').count() == 1 and pg.locator('datalist#rn-personnes option[value="Noa Laurent"]').count() == 1)
     pg.select_option('#n-ajout', 'Noa Laurent')
