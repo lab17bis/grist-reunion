@@ -98,6 +98,11 @@ Plusieurs outils de la même famille peuvent travailler dans un même document G
 
 Ce que fait cet outil : Il ne crée pas de table de personnes. Si `Personnes` existe, ses noms sont proposés dans les champs Animation, Secrétariat, Participants, Qui présente ? et Responsable.
 
+**Réglages › Données** montre, pour ce document : les tables partagées et les outils qui s'en servent ; l'état des règles d'accès ; les colonnes de lien. Rien n'est modifié sans un clic d'un propriétaire.
+
+- **Règle d'accès proposée** : l'auteur et la date d'une proposition de point (`Points.Propose_par`, `Points.Propose_le`) ne se modifient pas, sauf par les propriétaires. Elle est posée à l'installation des tables ; dans un document existant, bouton *Installer les règles proposées*. Une règle n'est ajoutée que sur une table ou une colonne qui n'en a aucune : les règles existantes ne sont jamais modifiées. L'outil ne restreint pas la suppression des réunions : le suivi de projets crée et supprime aussi des lignes de `Reunions` (rendez-vous d'un projet).
+- **Colonnes de lien** (bouton *Ajouter les colonnes de lien*) : `Points.Porteur_fiche`, `Actions_reunion.Responsable_fiche`, `Reunions.Animation_fiche` et `Reunions.Secretariat_fiche` relient le nom saisi à la fiche de `Personnes` (même nom, sans tenir compte des majuscules ni des espaces autour) ; `Actions_reunion.Projet` reprend le projet de la réunion (si `Reunions.Projet` existe). Ce sont des colonnes calculées par Grist : le texte saisi est gardé, une case vide signale un nom absent de l'annuaire ou écrit autrement, et supprimer une de ces colonnes ne perd aucune donnée. Le champ Participants, qui contient plusieurs noms, n'est pas relié.
+
 ## Espaces clés en main
 
 Ce widget est déjà assemblé, avec d'autres, dans des **espaces** : des documents Grist complets à importer en une fois, vides ou avec un exemple fictif.
