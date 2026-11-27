@@ -105,6 +105,16 @@
       h += "<div class=\"fr-callout fr-mb-3w\"><h2 class=\"fr-callout__title\">Réservé aux personnes connectées</h2>" +
         "<p class=\"fr-callout__text\">Cet outil manipule des données internes au document. Il n'a pas de page publique : seules les personnes invitées dans le document Grist, avec leur rôle, peuvent l'utiliser.</p></div>";
     }
+    h += "<h2 class=\"fr-h5\">Lien réservé aux personnes invitées</h2>" +
+      "<p class=\"fr-text--sm\">Alternative à la page publique : la page s'affiche en plein écran, sans menus Grist, mais <strong>seules les personnes invitées dans le document</strong> peuvent l'ouvrir. Les autres voient une demande de connexion et aucune donnée. Les droits de chaque personne (lecture, édition) restent ceux fixés dans Grist.</p>" +
+      "<ol class=\"fr-text--sm\"><li>Dans Grist, cliquez sur <strong>Partager</strong> puis invitez les personnes avec leur courriel (rôle <strong>Lecteur</strong> pour consulter, <strong>Éditeur</strong> pour saisir). Laissez l'accès public désactivé.</li>" +
+      "<li>Ouvrez dans Grist la page qui contient l'outil, puis copiez son adresse dans la barre du navigateur.</li>" +
+      "<li>Collez-la ci-dessous : le lien réservé se construit tout seul.</li></ol>" +
+      "<div class=\"fr-input-group\"><label class=\"fr-label\" for=\"" + id + "-pg\">Adresse de la page Grist<span class=\"fr-hint-text\">Exemple : https://grist.exemple.fr/o/equipe/xxxx/Mon-document/p/3</span></label><input class=\"fr-input\" id=\"" + id + "-pg\" type=\"url\" data-cl-reserve></div>" +
+      "<div class=\"fr-select-group\"><label class=\"fr-label\" for=\"" + id + "-md\">Ce que les personnes peuvent faire</label><select class=\"fr-select\" id=\"" + id + "-md\" data-cl-reserve><option value=\"singlePage\">Consulter et saisir (selon leur rôle)</option><option value=\"embed\">Consulter seulement</option></select></div>" +
+      "<div class=\"fr-input-group\"><label class=\"fr-label\" for=\"" + id + "-res\">Lien à envoyer aux personnes invitées<span class=\"fr-hint-text\">Fonctionne seulement pour elles. Ce n'est pas un verrou : le plein écran masque les menus, il ne remplace pas les invitations.</span></label><input class=\"fr-input cl-code\" id=\"" + id + "-res\" readonly></div>" +
+      "<button type=\"button\" class=\"fr-btn fr-btn--sm fr-btn--secondary\" data-cl-copier=\"" + id + "-res\">Copier le lien réservé</button>" +
+      "<div class=\"fr-callout fr-mt-3w\"><p class=\"fr-callout__text fr-text--sm\"><strong>Page publique ou lien réservé ?</strong> Publique : toute personne qui a le lien voit les données, sans compte. Réservée : il faut être invité et connecté. Pour des données internes ou personnelles, choisissez toujours la version réservée et vérifiez les <strong>Permissions avancées</strong> du document.</p></div>";
     h += "<h2 class=\"fr-h5\">Qui peut utiliser l'outil ?</h2><ol class=\"fr-text--sm\">" +
       "<li>Dans Grist, cliquez sur <strong>Partager</strong> puis <strong>Gérer les utilisateurs</strong>.</li>" +
       "<li>Invitez les personnes : <strong>Éditeur</strong> pour celles qui saisissent, <strong>Lecteur</strong> pour celles qui consultent.</li>" +
@@ -155,6 +165,17 @@
     if (global.PageEditeur) { global.PageEditeur.monter(zonePage.firstChild, opt.page, function () { modifie(true); }); }
     zone("publication").innerHTML = publicationHtml(opt.publication, id);
     brancherPublier(zone("publication"), opt.publication, id, function (v) { modifie(v); });
+    (function () {
+      var pg = document.getElementById(id + "-pg"), res = document.getElementById(id + "-res");
+      if (!pg || !res) { return; }
+      var md = document.getElementById(id + "-md");
+      function maj() {
+        var v = pg.value.trim(), u;
+        if (!v) { res.value = ""; return; }
+        try { u = new URL(v); u.search = ""; if (md.value === "embed") { u.searchParams.set("embed", "true"); } else { u.searchParams.set("style", "singlePage"); } res.value = u.href; } catch (e) { res.value = "Adresse non reconnue : collez l'adresse complète de la page Grist."; }
+      }
+      pg.addEventListener("input", maj); md.addEventListener("change", maj);
+    })();
 
     // Aperçu réel : l'élément de l'outil voyage entre son onglet et l'aperçu (déplacé, jamais copié).
     var reel = !opt.apercu && !!(opt.vue && opt.vue.element);
