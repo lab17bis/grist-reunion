@@ -3,6 +3,7 @@
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
 ## 2026-11-27 (accès au document)
+- Barre de l'éditeur : le nom du widget et son statut restent sur une ligne ; la barre ne change plus de hauteur quand le statut passe à « non enregistré ».
 - Dans Grist, quand le widget ne peut pas lire le document (accès complet non accordé, ou compte sans droit de lecture), un message le dit et indique quoi faire, au lieu d'un outil vide ou d'un écran d'installation. Contrôle commun, dans `commun/barre.js`.
 
 ## 2026-11-27 (Réglages › Données)

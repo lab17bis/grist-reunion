@@ -1,8 +1,10 @@
 /* Barre commune de l'éditeur des widgets (BarreLab). Fichier partagé : même copie dans chaque dépôt. */
 .cl-barre { position: sticky; top: 0; z-index: 750; display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; padding: .5rem 1rem; margin-bottom: 1rem; background: var(--background-default-grey); border-bottom: 1px solid var(--border-default-grey); }
 .cl-titre { display: flex; gap: .5rem; align-items: center; flex: 1 1 0; min-width: 12rem; }
-.cl-nom { margin: 0; font-weight: 700; }
-.cl-titre .fr-badge { margin: 0; }
+.cl-nom { margin: 0; font-weight: 700; white-space: nowrap; }
+.cl-titre .fr-badge { margin: 0; white-space: nowrap; }
+/* Le nom et le statut tiennent sur une ligne : la barre ne change pas de hauteur quand le statut change. */
+.cl-titre { min-width: max-content; }
 .cl-onglets { flex: 0 1 auto; display: flex; justify-content: center; }
 .cl-barre .fr-segmented { margin: 0; }
 .cl-actions { flex: 1 1 0; display: flex; gap: .5rem; justify-content: flex-end; align-items: center; min-width: 10rem; }
