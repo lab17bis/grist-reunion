@@ -79,6 +79,7 @@
       "<div class=\"fr-fieldset__element\"><div class=\"fr-radio-group\"><input type=\"radio\" id=\"" + id + "-mode-p\" name=\"" + id + "-mode\" value=\"page\"" + (page ? " checked" : "") + "><label class=\"fr-label\" for=\"" + id + "-mode-p\">Page d'usage<span class=\"fr-hint-text\">L'outil avec son en-tête et son pied de page, sans barre de réglages. Pour les personnes qui utilisent l'outil.</span></label></div></div>" +
       "</fieldset>" +
       "<button type=\"button\" class=\"fr-btn fr-btn--sm fr-btn--secondary\" id=\"" + id + "-mode-ok\">Appliquer à cette vue</button>" +
+      "<p class=\"fr-text--xs fr-mt-1w\"><strong>Pour garder ce choix</strong>, cliquez ensuite sur <strong>Enregistrer</strong> en haut à droite de la vue Grist (bouton de Grist, à côté du filtre). Sans cela, la vue revient à son affichage précédent au prochain chargement.</p>" +
       "<p class=\"fr-text--xs fr-mt-1w\">En page d'usage, le lien « Éditer le widget », en bas de page, rouvre l'éditeur. Ce choix ne protège rien : pour empêcher une modification, utilisez les droits du document (Partager, Permissions avancées).</p></div>";
   }
 

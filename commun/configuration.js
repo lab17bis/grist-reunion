@@ -263,7 +263,7 @@
       panneauPub.insertAdjacentHTML("afterbegin", BL.modeHtml(id, m));
       BL.brancherMode(panneauPub, id, function (choisi, ok) {
         if (!ok) { message("warning", "Affichage appliqué pour cette fois seulement : Grist n'a pas enregistré le choix (droits insuffisants sur le document ?)."); }
-        if (choisi === "page") { versPage(); } else { message("success", "Cette vue Grist affiche l'éditeur du widget."); }
+        if (choisi === "page") { versPage(); } else { message("success", "Cette vue Grist affiche l'éditeur du widget. Pour garder ce choix, cliquez sur Enregistrer en haut à droite de la vue Grist."); }
       });
     }
     blocMode("editeur");
