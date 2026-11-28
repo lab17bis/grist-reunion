@@ -22,7 +22,7 @@
  *   options.surEnregistrer: function () : à appeler quand la personne clique sur Enregistrer
  *   options.surAnnuler    : facultatif
  *   options.libelleAnnuler: facultatif, texte du bouton secondaire (« Annuler » par défaut, par exemple « Fermer »)
- *   options.modifieInitial: facultatif, vrai pour ouvrir avec le badge « Modifications non enregistrées »
+ *   options.modifieInitial: facultatif, vrai pour ouvrir avec le badge « Non enregistré »
  *   options.surOnglet     : facultatif, function (id) : appelée à chaque changement d'onglet (utile pour redimensionner une carte ou un graphique)
  *   options.ongletInitial : facultatif, identifiant de l'onglet à ouvrir (« vue » ouvre l'Aperçu)
  * Renvoie { modifie(oui), message(type, texte), enregistre(oui), onglet(id), rafraichir(id), ongletActif(), estModifie() }.
@@ -271,7 +271,7 @@
     var modif = false;
     function modifie(oui) {
       modif = !!oui;
-      barre.etat(oui ? "Modifications non enregistrées" : "Enregistré", oui ? "warning" : "success");
+      barre.etat(oui ? "Non enregistré" : "Enregistré", oui ? "warning" : "success");
       avisApercu();
     }
 
@@ -281,11 +281,15 @@
       if (type === "success") { setTimeout(function () { if (m.textContent.indexOf(texte) >= 0) { m.innerHTML = ""; } }, 4000); }
     }
 
+    // Les champs d'une zone data-cl-hors-reglages agissent tout de suite (générer des codes, par exemple) :
+    // ils ne rendent pas les réglages « non enregistrés ».
     conteneur.addEventListener("change", function (ev) {
+      if (ev.target.closest && ev.target.closest("[data-cl-hors-reglages]")) { return; }
       var sec = ev.target.closest && ev.target.closest("[data-cl-section]");
       if (sec && propres.indexOf(sec.getAttribute("data-cl-section")) >= 0) { modifie(true); }
     });
     conteneur.addEventListener("input", function (ev) {
+      if (ev.target.closest && ev.target.closest("[data-cl-hors-reglages]")) { return; }
       var s = ev.target.closest && ev.target.closest("[data-cl-section]");
       if (s && propres.indexOf(s.getAttribute("data-cl-section")) >= 0) { modifie(true); }
     });
