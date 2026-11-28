@@ -43,7 +43,8 @@
    "Participants": "Camille Exemple, Dominique Martin, Alex Dupont, Sacha Bernard, Lou Petit",
    "Excuses": "",
    "Objectif": "",
-   "Statut": "En préparation"
+   "Statut": "En préparation",
+   "Fin_propositions": "J+1"
   },
   {
    "id": 4,
@@ -315,6 +316,21 @@
   {
    "id": 7,
    "Nom": "Eden Michel"
+  }
+ ],
+ "Propositions_publiques": [
+  {
+   "id": 1,
+   "Reunion": 3,
+   "Titre": "Accueil des nouveaux arrivants en janvier",
+   "Description": "Qui prépare le livret d'accueil ? (exemple fictif)",
+   "Type": "Échange",
+   "Duree": 10,
+   "Porteur": "",
+   "Nom": "Une personne d'un autre service (exemple fictif)",
+   "Recevable": true,
+   "Suite": "",
+   "Point": 0
   }
  ]
 }

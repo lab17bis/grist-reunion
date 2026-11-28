@@ -31,6 +31,18 @@
   var TABLES = ['Reunions', 'Points', 'Decisions', 'Actions_reunion'];
   // Nom distinct de la table Actions de grist-projet : les deux outils peuvent partager un document.
   var T_ACTIONS = 'Actions_reunion';
+  // Ordre du jour participatif (facultatif, installé depuis Réglages) : date limite des propositions et propositions
+  // reçues par un formulaire public. Un formulaire Grist publié écrit toutes les colonnes de sa table sans tenir compte
+  // des règles d'accès : il est branché sur une table à part, jamais sur Points.
+  var T_PUBLICS = 'Propositions_publiques';
+  var F_HORS_DELAI = 'r = $Reunion\nif not r:\n  return False\nif r.Cloture_points and $id > r.Cloture_points:\n  return True\n' +
+    'return bool(r.Fin_propositions and $Propose_le and $Propose_le.date() > r.Fin_propositions)';
+  var F_RECEVABLE = 'r = $Reunion\nif not r or not ($Titre or "").strip():\n  return False\nif r.Cloture_publiques and $id > r.Cloture_publiques:\n  return False\n' +
+    'return not (r.Fin_propositions and $Envoye_le and $Envoye_le.date() > r.Fin_propositions)';
+  // Adresse de la personne qui anime : retenue seulement si un seul nom de Personnes correspond (un homonyme ajouté
+  // exprès rend l'adresse vide, et la personne n'est alors plus reconnue).
+  var F_EMAIL_ANIMATION = 'nom = ($Animation or "").strip().lower()\nif not nom:\n  return ""\n' +
+    'l = [p for p in Personnes.all if (p.Nom or "").strip().lower() == nom]\nreturn (l[0].Email or "").strip() if len(l) == 1 else ""';
   var L = {};            // listes en vigueur
   var reglages = {};
   var DUREE_DEFAUT = 10;
@@ -117,7 +129,7 @@
       TABLES.forEach(function (t) {
         data[t] = (json[t] || []).map(function (l) {
           var c = Object.assign({}, l);
-          ['Date', 'Echeance'].forEach(function (k) {
+          ['Date', 'Echeance', 'Fin_propositions'].forEach(function (k) {
             if (typeof c[k] === 'string') { var m = c[k].match(/^J([+-]\d+)$/); c[k] = m ? auj + 86400 * (+m[1]) : saisieVersDate(c[k]); }
           });
           return c;
@@ -125,6 +137,7 @@
       });
       data.Personnes = json.Personnes || [];
       data.Projets = json.Projets || [];
+      data[T_PUBLICS] = (json[T_PUBLICS] || []).map(function (l) { return Object.assign({}, l); });
     });
   }
 
@@ -144,17 +157,55 @@
     var personnes = grist.docApi.fetchTable('Personnes').then(function (c) { data.Personnes = lignesDepuisColonnes(c); }).catch(function () { data.Personnes = []; });
     // Table Projets de l'outil de suivi de projets (facultative) : proposée pour rattacher une réunion à un projet.
     var projets = grist.docApi.fetchTable('Projets').then(function (c) { data.Projets = lignesDepuisColonnes(c); }).catch(function () { data.Projets = []; });
-    return Promise.all([config, personnes, projets].concat(TABLES.map(function (t) {
+    // Propositions reçues par formulaire public (facultatives) et sections Grist (formulaire publié sur Points ?).
+    var publics = grist.docApi.fetchTable(T_PUBLICS).then(function (c) { data[T_PUBLICS] = lignesDepuisColonnes(c); }).catch(function () { data[T_PUBLICS] = []; });
+    var sections = grist.docApi.fetchTable('_grist_Views_section').then(function (v) { meta.sections = lignesDepuisColonnes(v); }).catch(function () { meta.sections = null; });
+    return Promise.all([config, personnes, projets, publics, sections].concat(TABLES.map(function (t) {
       return grist.docApi.fetchTable(t).then(function (c) { data[t] = lignesDepuisColonnes(c); }).catch(function () { data[t] = []; });
     })));
   }
 
   function charger() {
-    return (DEMO ? chargerDemo() : chargerGrist()).then(indexer);
+    return (DEMO ? chargerDemo() : chargerGrist()).then(indexer).then(function () { if (!DEMO) gelerPropositions(); });
+  }
+  // Date limite des propositions. Quand elle est passée, l'outil note le numéro du dernier point (et de la dernière
+  // proposition reçue par formulaire) : Grist refuse ensuite tout point plus récent (colonne Hors_delai, règle d'accès),
+  // même avec une date falsifiée. Les propositions par formulaire se ferment aussi quand la réunion quitte sa première
+  // étape. Repousser la date rouvre. Écrit par qui en a le droit (règles posées : l'animation et les propriétaires).
+  function gelerPropositions() {
+    if (!aColonne('Reunions', 'Cloture_points')) return;
+    var auj = aujourdhui(), acts = [];
+    var dernier = function (l) { return (l || []).reduce(function (m, x) { return Math.max(m, num(x.id)); }, 0) || -1; };
+    var dp = dernier(data.Points), dpub = dernier(data[T_PUBLICS]), avecPub = aColonne('Reunions', 'Cloture_publiques') && aTablePublics();
+    (data.Reunions || []).forEach(function (r) {
+      var fin = num(r.Fin_propositions), ferme = !!fin && auj > fin, champs = {};
+      if (ferme && !num(r.Cloture_points)) champs.Cloture_points = dp;
+      else if (!ferme && num(r.Cloture_points)) champs.Cloture_points = 0;
+      if (avecPub) {
+        var fermePub = ferme || ((r.Statut || L.statutsReunion[0]) !== L.statutsReunion[0]);
+        if (fermePub && !num(r.Cloture_publiques)) champs.Cloture_publiques = dpub;
+        else if (!fermePub && num(r.Cloture_publiques)) champs.Cloture_publiques = 0;
+      }
+      if (Object.keys(champs).length) { acts.push(['UpdateRecord', 'Reunions', r.id, champs]); Object.assign(r, champs); }
+    });
+    if (acts.length) grist.docApi.applyUserActions(acts).catch(function () { /* sans droit : le gel attendra l'animation */ });
+  }
+  function propositionsOuvertes(r) { var fin = num(r && r.Fin_propositions); return !fin || aujourdhui() <= fin; }
+  function propositionsPubliques(rid) {
+    return (data[T_PUBLICS] || []).filter(function (x) { return num(x.Reunion) === rid && x.Recevable && !x.Suite; })
+      .sort(function (a, b) { return a.id - b.id; });
+  }
+  function lienProposition(r) {
+    var u = reglages.publication && reglages.publication.lienProposition;
+    if (!u || !r) return '';
+    u = String(u).replace(/\{reunion\}/g, r.id);
+    var base = window.PageDSFR && window.PageDSFR.adresseSure ? window.PageDSFR.adresseSure(u) : '';
+    if (!base) return '';
+    try { var x = new URL(base); if (!x.searchParams.has('pre_Reunion')) x.searchParams.set('pre_Reunion', r.id); return x.href; } catch (e) { return ''; }
   }
   function indexer() {
     idx = {};
-    TABLES.forEach(function (t) { idx[t] = {}; (data[t] || []).forEach(function (l) { idx[t][l.id] = l; }); });
+    TABLES.concat([T_PUBLICS]).forEach(function (t) { idx[t] = {}; (data[t] || []).forEach(function (l) { idx[t][l.id] = l; }); });
   }
 
   function pointsDe(rid, statut) {
@@ -212,10 +263,17 @@
       if (apres) apres(res);
       etat.alerte = message ? { type: 'success', texte: message } : null;
       return DEMO ? null : charger();
-    }).then(rendre).catch(function (err) {
-      etat.alerte = { type: 'error', texte: 'Enregistrement refusé par Grist. Vérifiez vos droits sur le document. (' + ((err && err.message) || err) + ')' };
-      rendre();
-    });
+    }).then(rendre).catch(refus);
+  }
+  // Refus d'une règle d'accès : Grist transmet le message de la règle (memo), plus parlant que le détail technique.
+  function refus(err) {
+    var memos = ((err && err.details && err.details.memos) || []).map(function (m) { return typeof m === 'string' ? m : (m && m.text) || ''; })
+      .filter(function (m, i, l) { return m && l.indexOf(m) === i; });
+    var msg = String((err && err.message) || err);
+    etat.alerte = { type: 'error', texte: memos.length ? 'Enregistrement refusé : ' + memos.join(' ') :
+      /access rules/i.test(msg) ? 'Enregistrement refusé par les règles d\'accès du document.' :
+      'Enregistrement refusé par Grist. Vérifiez vos droits sur le document. (' + msg + ')' };
+    rendre();
   }
 
   // ---------------------------------------------------------------------------
@@ -345,6 +403,8 @@
       champ(p + '-lieu', 'Lieu ou lien de visioconférence', b.Lieu, { attrs: a('Lieu') }) +
       champ(p + '-anim', 'Animation', b.Animation, { attrs: a('Animation') + ' list="rn-personnes"' }) +
       champ(p + '-secr', 'Secrétariat de séance', b.Secretariat, { attrs: a('Secretariat') + ' list="rn-personnes"' }) +
+      (DEMO || aColonne('Reunions', 'Fin_propositions') ? champ(p + '-finprop', 'Date limite des propositions de points', b.Fin_propositions ? (typeof b.Fin_propositions === 'number' ? dateVersSaisie(b.Fin_propositions) : b.Fin_propositions) : '',
+        { type: 'date', aide: 'Facultatif. Le dernier jour compris. Ensuite, seule la personne qui anime ajoute des points (si les règles d\'accès proposées sont posées).', attrs: a('Fin_propositions') }) : '') +
       champ(p + '-obj', 'Objectif de la réunion', b.Objectif, { multiligne: true, lignes: 2, attrs: a('Objectif'), classe: 'rn-large' }) +
       champ(p + '-part', 'Participants', b.Participants, { multiligne: true, lignes: 2, aide: 'Noms séparés par des virgules ou des retours à la ligne.', attrs: a('Participants'), classe: 'rn-large' }) +
       ajoutParticipants(p) +
@@ -382,6 +442,7 @@
     var plus = {};
     if (aColonne('Reunions', 'Projet')) plus.Projet = num(b.Projet) || 0;
     if (aColonne('Reunions', 'Notes')) plus.Notes = b.Notes || '';
+    if (DEMO || aColonne('Reunions', 'Fin_propositions')) plus.Fin_propositions = typeof b.Fin_propositions === 'number' ? b.Fin_propositions : (saisieVersDate(b.Fin_propositions) || null);
     return Object.assign(plus, { Titre: String(b.Titre || '').trim(), Instance: b.Instance || '', Date: typeof b.Date === 'number' ? b.Date : saisieVersDate(b.Date),
       Heure: b.Heure || '', Duree_prevue: num(b.Duree_prevue) || null, Lieu: b.Lieu || '', Animation: b.Animation || '', Secretariat: b.Secretariat || '',
       Participants: b.Participants || '', Objectif: b.Objectif || '', Excuses: b.Excuses || '' });
@@ -457,26 +518,45 @@
       h += '<h3 class="fr-h6 fr-mt-3w">Actions en cours des réunions précédentes</h3>' + tableauActions(prec, true);
     }
     h += '</section><aside class="rn-col-laterale">';
-    h += '<h2 class="fr-h5">Propositions <span class="rn-compte">(' + proposes.length + ')</span></h2>';
-    if (!proposes.length) h += '<p class="fr-text--sm">Aucune proposition en attente.</p>';
+    var pubs = propositionsPubliques(r.id), ouvert = propositionsOuvertes(r), lp = lienProposition(r);
+    h += '<h2 class="fr-h5">Propositions <span class="rn-compte">(' + (proposes.length + pubs.length) + ')</span></h2>';
+    if (num(r.Fin_propositions)) h += '<p class="fr-text--sm rn-limite">' + (ouvert ? 'Propositions ouvertes jusqu\'au ' + esc(dateTexte(r.Fin_propositions, true)) + ' inclus.' :
+      'Date limite des propositions passée (' + esc(dateTexte(r.Fin_propositions, true)) + ').') + '</p>';
+    if (lp && ouvert && (r.Statut || L.statutsReunion[0]) === L.statutsReunion[0]) h += '<p><button type="button" class="fr-btn fr-btn--sm fr-btn--tertiary fr-icon-links-line fr-btn--icon-left" data-action="copier-lien-proposition" data-lien="' + esc(lp) + '">Copier le lien de proposition</button></p>';
+    if (!proposes.length && !pubs.length) h += '<p class="fr-text--sm">Aucune proposition en attente.</p>';
     proposes.forEach(function (p) {
       h += '<div class="rn-proposition"><p class="rn-point__titre">' + esc(p.Titre) + '</p>' +
-        '<p class="rn-point__meta">' + badge(p.Type, COULEUR_TYPE[p.Type]) + ' ' + esc(dureeTexte(p.Duree)) + (p.Propose_par ? ' · proposé par ' + esc(p.Propose_par) : '') + '</p>' +
+        '<p class="rn-point__meta">' + badge(p.Type, COULEUR_TYPE[p.Type]) + ' ' + esc(dureeTexte(p.Duree)) +
+          (p.Origine ? ' · ' + esc(p.Origine) + (p.Propose_par ? ', repris par ' + esc(p.Propose_par) : '') : (p.Propose_par ? ' · proposé par ' + esc(p.Propose_par) : '')) + '</p>' +
         (p.Description ? '<p class="fr-text--sm fr-mb-1w">' + texteMultiligne(p.Description) + '</p>' : '') +
         '<ul class="fr-btns-group fr-btns-group--inline fr-btns-group--sm">' +
         '<li><button type="button" class="fr-btn" data-point-statut="' + p.id + '" data-valeur="Retenu">Retenir</button></li>' +
         '<li><button type="button" class="fr-btn fr-btn--secondary" data-point-statut="' + p.id + '" data-valeur="Reporté">Reporter</button></li>' +
         '<li><button type="button" class="fr-btn fr-btn--tertiary" data-point-statut="' + p.id + '" data-valeur="Écarté">Écarter</button></li></ul></div>';
     });
+    if (pubs.length) {
+      h += '<h3 class="fr-h6 fr-mt-2w">Reçues par formulaire <span class="rn-compte">(' + pubs.length + ')</span></h3>' +
+        '<p class="fr-text--xs">Envoyées sans compte Grist : le nom est celui que la personne a déclaré, il n\'est pas vérifié.</p>';
+      pubs.forEach(function (x) {
+        h += '<div class="rn-proposition rn-proposition--publique"><p class="rn-point__titre">' + esc(x.Titre) + '</p>' +
+          '<p class="rn-point__meta">' + badge(x.Type, COULEUR_TYPE[x.Type]) + ' ' + esc(dureeTexte(x.Duree)) + ' · envoyé par ' + esc(String(x.Nom || '').trim() || 'une personne sans nom') + '</p>' +
+          (x.Description ? '<p class="fr-text--sm fr-mb-1w">' + texteMultiligne(x.Description) + '</p>' : '') +
+          '<ul class="fr-btns-group fr-btns-group--inline fr-btns-group--sm">' +
+          '<li><button type="button" class="fr-btn fr-btn--secondary" data-publique="' + x.id + '" data-valeur="Reprise">Reprendre dans les propositions</button></li>' +
+          '<li><button type="button" class="fr-btn fr-btn--tertiary" data-publique="' + x.id + '" data-valeur="Écartée">Écarter</button></li></ul></div>';
+      });
+    }
     var b = brouillon('point-' + r.id);
     var a = 'data-brouillon="point-' + r.id + '"';
-    h += '<h2 class="fr-h5 fr-mt-3w">Proposer un point</h2><form data-form="point" data-reunion="' + r.id + '">' +
+    if (!ouvert) h += '<h2 class="fr-h5 fr-mt-3w">Proposer un point</h2><p class="fr-text--sm">La date limite est passée : seule la personne qui anime ajoute encore des points.</p>' +
+      '<details class="rn-hors-delai"><summary>Ajouter un point (animation)</summary>';
+    h += (ouvert ? '<h2 class="fr-h5 fr-mt-3w">Proposer un point</h2>' : '') + '<form data-form="point" data-reunion="' + r.id + '">' +
       champ('p-titre-' + r.id, 'Sujet', b.Titre || '', { requis: true, attrs: a + ' data-champ="Titre"' }) +
       champ('p-desc-' + r.id, 'Précisions', b.Description || '', { multiligne: true, lignes: 2, attrs: a + ' data-champ="Description"' }) +
       select('p-type-' + r.id, 'Type de point', b.Type || L.typesPoint[0], L.typesPoint, a + ' data-champ="Type"') +
       champ('p-duree-' + r.id, 'Durée souhaitée (minutes)', b.Duree || DUREE_DEFAUT, { type: 'number', attrs: a + ' data-champ="Duree" min="1"' }) +
       champ('p-porteur-' + r.id, 'Qui présente ?', b.Porteur || '', { attrs: a + ' data-champ="Porteur" list="rn-personnes"' }) +
-      '<button class="fr-btn fr-btn--secondary" type="submit">Proposer ce point</button></form>';
+      '<button class="fr-btn fr-btn--secondary" type="submit">Proposer ce point</button></form>' + (ouvert ? '' : '</details>');
     if (autres.length) {
       h += '<h2 class="fr-h6 fr-mt-3w">Reportés ou écartés</h2><ul class="rn-liste-simple">' + autres.map(function (p) {
         return '<li>' + esc(p.Titre) + ' ' + badge(p.Statut) + ' <button type="button" class="fr-btn fr-btn--sm fr-btn--tertiary-no-outline" data-point-statut="' + p.id + '" data-valeur="Proposé">Remettre en proposition</button></li>';
@@ -766,6 +846,8 @@
     });
     zone.addEventListener('input', function (e) { var t = e.target; if (t.hasAttribute('data-nc') && t.type !== 'checkbox' && t.tagName !== 'SELECT') nouveauChamp[t.getAttribute('data-nc')] = t.value; });
     zone.addEventListener('click', function (e) {
+      var bp = e.target.closest('button[data-rn-participatif]');
+      if (bp) { bp.disabled = true; installerParticipatif(bp.getAttribute('data-rn-participatif') === 'publics'); return; }
       var b = e.target.closest('button[data-cp]'); if (!b) return;
       if (b.getAttribute('data-cp') === 'ajouter') ajouterChampPerso();
       else { brouillonReglages.champsPerso = (brouillonReglages.champsPerso || []).filter(function (x) { return x.id !== b.getAttribute('data-id'); }); if (configLab) configLab.modifie(true); redessinerReglages(); }
@@ -805,7 +887,7 @@
       h += '<div class="fr-input-group"><label class="fr-label" for="rg-' + l[0] + '">' + esc(l[1]) + '<span class="fr-hint-text">Colonne ' + l[2] + '.' + l[3] + '</span></label>' +
         '<textarea class="fr-input" rows="4" id="rg-' + l[0] + '">' + esc((b.listes[l[0]] && b.listes[l[0]].length ? b.listes[l[0]] : DEFAUTS[l[0]]).join('\n')) + '</textarea></div>';
     });
-    h += '<h2 class="fr-h5 fr-mt-3w">Autres réglages</h2>' + champ('rg-duree', 'Durée proposée par défaut pour un point (minutes)', b.dureeDefaut || 10, { type: 'number', attrs: 'min="1"' }) + blocChampsPerso() + '</div>';
+    h += '<h2 class="fr-h5 fr-mt-3w">Autres réglages</h2>' + champ('rg-duree', 'Durée proposée par défaut pour un point (minutes)', b.dureeDefaut || 10, { type: 'number', attrs: 'min="1"' }) + blocParticipatif() + blocChampsPerso() + '</div>';
     return h;
   }
   // Réglages › Données (commun/donnees.js) : tables partagées, règles d'accès proposées, colonnes de lien.
@@ -817,14 +899,52 @@
   // Pas de restriction de suppression des réunions : le suivi de projets crée et supprime aussi des lignes de Reunions (rendez-vous).
   var REGLES_ACCES = [{ table: 'Points', cols: 'Propose_par,Propose_le', formule: 'user.Access != OWNER', droits: '-U',
     memo: 'L’auteur et la date d’une proposition de point ne se modifient pas.', effet: 'l\'auteur et la date d\'une proposition ne se modifient pas (traçabilité de l\'ordre du jour)' }];
+  var NP = 'user.Access != OWNER';
+  var ANIME = function (x) { return '(' + x + '.Animation_email and user.Email and ' + x + '.Animation_email.lower() == user.Email.lower())'; };
+  var M_STATUT = 'Seule la personne qui anime retient, reporte, écarte ou ordonne les points.';
+  var M_HORS = 'La date limite des propositions de points est passée.';
+  var M_HORS_ANIM = 'La date limite des propositions de points est passée : seule la personne qui anime ajoute encore des points.';
+  var M_ANIM = 'Seule la personne qui anime (ou un propriétaire) change l\'animation, la date limite et la clôture des propositions.';
+  // Règles de cet outil d'une version à l'autre : remplacées par la version actuelle quand on met à jour.
+  var ANCIENS_MEMOS = [M_STATUT, M_HORS, M_HORS_ANIM, M_ANIM];
+  function reglesAcces() {
+    var r = REGLES_ACCES.slice();
+    var anim = aColonne('Points', 'Animation_email') && aColonne('Reunions', 'Animation_email');
+    if (anim) {
+      r.push({ table: 'Points', cols: 'Statut,Ordre', formule: NP + ' and not ' + ANIME('rec'), droits: '-U', memo: M_STATUT,
+        effet: 'seule la personne qui anime la réunion retient, reporte, écarte ou ordonne les points (reconnue par son adresse dans Personnes)' });
+      r.push({ table: 'Points', cols: '*', formule: NP + ' and newRec.Statut and newRec.Statut != "Proposé" and not ' + ANIME('newRec'), droits: '-C', memo: M_STATUT,
+        effet: 'les autres personnes ajoutent des points seulement comme propositions' });
+    }
+    if (aColonne('Points', 'Hors_delai')) r.push({ table: 'Points', cols: '*', formule: NP + ' and newRec.Hors_delai' + (anim ? ' and not ' + ANIME('newRec') : ''), droits: '-C',
+      memo: anim ? M_HORS_ANIM : M_HORS, effet: anim ? 'après la date limite, seule la personne qui anime ajoute des points' : 'après la date limite, seuls les propriétaires ajoutent des points' });
+    if (anim && ['Fin_propositions', 'Cloture_points', 'Cloture_publiques'].every(function (c) { return aColonne('Reunions', c); })) {
+      r.push({ table: 'Reunions', cols: 'Animation,Fin_propositions,Cloture_points,Cloture_publiques', formule: NP + ' and not ' + ANIME('rec'), droits: '-U', memo: M_ANIM,
+        effet: 'personne ne se désigne animateur d\'une réunion existante, ni ne change la date limite ou ne rouvre les propositions, sauf la personne qui anime et les propriétaires' });
+    }
+    if (aTablePublics()) {
+      r.push({ table: T_PUBLICS, cols: 'Reunion,Titre,Description,Type,Duree,Porteur,Nom,Envoye_le', formule: NP, droits: '-U',
+        memo: 'Le contenu d\'une proposition reçue par formulaire ne se modifie pas.', effet: 'le contenu d\'une proposition reçue par formulaire ne se modifie pas (sauf propriétaires)' });
+      r.push({ table: T_PUBLICS, cols: '*', formule: NP, droits: '-D', memo: 'Seuls les propriétaires retirent une proposition reçue par formulaire.',
+        effet: 'seuls les propriétaires retirent une proposition reçue par formulaire' });
+      r.push({ table: T_PUBLICS, cols: '*', formule: 'not user.IsLoggedIn', droits: '-R', memo: 'Les propositions reçues par formulaire ne sont pas lisibles sans compte.',
+        effet: 'les propositions reçues par formulaire (et les noms déclarés) ne sont pas lisibles sans compte (document public)' });
+    }
+    return r;
+  }
+  var NOTE_REGLES = 'Réserver l\'ordre du jour à la personne qui anime demande la table <code>Personnes</code> (annuaire) avec la colonne <code>Email</code>, puis les colonnes de lien <code>Animation_email</code> ci-dessous : la personne est reconnue par son nom dans Animation, s\'il ne correspond qu\'à une seule fiche. Cette protection vaut ce que valent les règles de la table Personnes : si un éditeur peut modifier l\'adresse d\'une autre fiche, il peut prendre sa place. Un formulaire public se publie sur <code>' + T_PUBLICS + '</code>, jamais sur <code>Points</code>. Après la pose des règles, vérifiez avec <strong>Voir en tant que</strong>.';
   var LIENS = [window.DonneesLab ? DonneesLab.lienPersonne('Points', 'Porteur', 'relie la personne qui présente le point à sa fiche') : null,
     window.DonneesLab ? DonneesLab.lienPersonne(T_ACTIONS, 'Responsable', 'relie la personne responsable de l\'action à sa fiche') : null,
     window.DonneesLab ? DonneesLab.lienPersonne('Reunions', 'Animation', 'relie la personne qui anime à sa fiche') : null,
     window.DonneesLab ? DonneesLab.lienPersonne('Reunions', 'Secretariat', 'relie le secrétariat de séance à sa fiche') : null,
     { table: T_ACTIONS, col: 'Projet', type: 'Ref:Projets', cible: 'Projets', affichage: 'Titre', source: 'Reunion', requis: [['Reunions', 'Projet']],
-      formule: '$Reunion.Projet', effet: 'reprend le projet de la réunion : l\'action se rattache au même projet' }].filter(Boolean);
+      formule: '$Reunion.Projet', effet: 'reprend le projet de la réunion : l\'action se rattache au même projet' },
+    { table: 'Reunions', col: 'Animation_email', type: 'Text', cible: 'Personnes', source: 'Animation', requis: [['Personnes', 'Email']],
+      formule: F_EMAIL_ANIMATION, effet: 'adresse de la personne qui anime, si son nom ne correspond qu\'à une seule fiche : sert aux règles qui lui réservent l\'ordre du jour' },
+    { table: 'Points', col: 'Animation_email', type: 'Text', cible: 'Personnes', source: 'Reunion', requis: [['Personnes', 'Email']],
+      formule: 'return $Reunion.Animation_email if $Reunion else ""', effet: 'reprend l\'adresse de la personne qui anime la réunion du point (pour les règles d\'accès)' }].filter(Boolean);
   var aclDonnees = null;
-  function optionsDonnees() { return { demo: DEMO, tables: TABLES, partage: PARTAGE, regles: REGLES_ACCES, liens: LIENS }; }
+  function optionsDonnees() { return { demo: DEMO, tables: TABLES.concat(aTablePublics() ? [T_PUBLICS] : []), partage: PARTAGE, regles: reglesAcces(), anciens: ANCIENS_MEMOS, liens: LIENS, noteRegles: NOTE_REGLES }; }
   function rendreDonnees(zone) {
     if (!window.DonneesLab) { zone.innerHTML = ''; return; }
     if (!DEMO && !aclDonnees) DonneesLab.lire().then(function (a) { aclDonnees = a; if (configLab) configLab.rafraichir('donnees'); });
@@ -836,7 +956,7 @@
       if (!b || b.disabled) return;
       b.disabled = true;
       var regles = b.getAttribute('data-donnees') === 'regles';
-      (regles ? DonneesLab.installerRegles(aclDonnees, meta, REGLES_ACCES) : DonneesLab.ajouterLiens(meta, LIENS)).then(function (n) {
+      (regles ? DonneesLab.installerRegles(aclDonnees, meta, reglesAcces(), ANCIENS_MEMOS) : DonneesLab.ajouterLiens(meta, LIENS)).then(function (n) {
         aclDonnees = null;
         if (configLab) configLab.message('success', regles ? n + ' règle(s) d\'accès installée(s). Grist recharge le document.' : n + ' colonne(s) de lien ajoutée(s).');
         return charger();
@@ -878,9 +998,11 @@
         publier: {
           lienDoc: (brouillonReglages.publication && brouillonReglages.publication.lienDoc) || '',
           texte: 'Page publique en lecture seule : prochaines réunions, instances, ordre du jour, puis compte rendu une fois la réunion à la dernière étape (« Compte rendu diffusé »). Une réunion « En préparation » n\'est jamais publiée.',
-          champs: [{ type: 'case', libelle: 'Afficher les participants et les excusés', aide: 'Désactivé par défaut : ce sont des noms de personnes.', valeur: !!(brouillonReglages.publication && brouillonReglages.publication.participants) }],
+          champs: [{ type: 'case', libelle: 'Afficher les participants et les excusés', aide: 'Désactivé par défaut : ce sont des noms de personnes.', valeur: !!(brouillonReglages.publication && brouillonReglages.publication.participants) },
+            { libelle: 'Lien du questionnaire de proposition de points (facultatif)', aide: 'Questionnaire grist-questionnaire branché sur la table ' + T_PUBLICS + ' (jamais sur Points). Chaque réunion en préparation propose alors « Copier le lien de proposition », avec la réunion déjà choisie : {reunion} est remplacé par son numéro, sinon pre_Reunion est ajouté au lien.',
+              exemple: 'https://lab17bis.github.io/grist-questionnaire/v1/formulaire.html?grist=…&pre_Reunion={reunion}', valeur: (brouillonReglages.publication && brouillonReglages.publication.lienProposition) || '' }],
           construire: function (l) { return window.GristPublic ? window.GristPublic.lien(location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, 'public.html'), { doc: l }) : null; },
-          surChangement: function (l, champs) { brouillonReglages.publication = { lienDoc: l, participants: !!(champs && champs[0] && champs[0].valeur) }; }
+          surChangement: function (l, champs) { brouillonReglages.publication = { lienDoc: l, participants: !!(champs && champs[0] && champs[0].valeur), lienProposition: String((champs && champs[1] && champs[1].valeur) || '').trim() }; }
         } },
       surEnregistrer: enregistrerReglages
     });
@@ -937,6 +1059,84 @@
       Actions_reunion: [['Reunion', { type: 'Ref:Reunions' }], ['Point', { type: 'Ref:Points' }], ['Intitule', { type: 'Text' }], ['Responsable', { type: 'Text' }],
         ['Echeance', { type: 'Date' }], ['Etat', choix(L.etatsAction)]]
     };
+  }
+  // Ordre du jour participatif : colonnes et table facultatives, ajoutées à l'installation ou depuis Réglages.
+  function donneeCol(def) { return Object.assign({ isFormula: false }, def); }
+  function schemaParticipatif() {
+    return {
+      Reunions: [['Fin_propositions', donneeCol({ type: 'Date' })], ['Cloture_points', donneeCol({ type: 'Int' })], ['Cloture_publiques', donneeCol({ type: 'Int' })]],
+      Points: [['Origine', donneeCol({ type: 'Text' })], ['Hors_delai', { type: 'Bool', isFormula: true, formula: F_HORS_DELAI }]]
+    };
+  }
+  function schemaPublics() {
+    return [['Reunion', donneeCol({ type: 'Ref:Reunions' })], ['Titre', donneeCol({ type: 'Text' })], ['Description', donneeCol({ type: 'Text' })],
+      ['Type', donneeCol(choix(L.typesPoint))], ['Duree', donneeCol({ type: 'Int' })], ['Porteur', donneeCol({ type: 'Text' })], ['Nom', donneeCol({ type: 'Text' })],
+      ['Envoye_le', { type: 'DateTime:Europe/Paris', isFormula: false, formula: 'NOW()' }],
+      ['Recevable', { type: 'Bool', isFormula: true, formula: F_RECEVABLE }],
+      ['Suite', donneeCol(choix(['Reprise', 'Écartée']))], ['Point', donneeCol({ type: 'Ref:Points' })]];
+  }
+  function aTablePublics() { return !!meta.tables.filter(function (x) { return x.tableId === T_PUBLICS; })[0]; }
+  function participatifPret() {
+    var sc = schemaParticipatif();
+    return Object.keys(sc).every(function (t) { return sc[t].every(function (c) { return aColonne(t, c[0]); }); });
+  }
+  function publicsPrets() { return aTablePublics() && schemaPublics().every(function (c) { return aColonne(T_PUBLICS, c[0]); }); }
+  function actionsParticipatif(avecPublics) {
+    var sc = schemaParticipatif(), a = [];
+    Object.keys(sc).forEach(function (t) { sc[t].forEach(function (c) { if (!aColonne(t, c[0])) a.push(['AddColumn', t, c[0], Object.assign({}, c[1])]); }); });
+    if (avecPublics) {
+      if (!aTablePublics()) a.push(['AddTable', T_PUBLICS, schemaPublics().map(function (c) { return Object.assign({ id: c[0] }, c[1]); })]);
+      else schemaPublics().forEach(function (c) { if (!aColonne(T_PUBLICS, c[0])) a.push(['AddColumn', T_PUBLICS, c[0], Object.assign({}, c[1])]); });
+    }
+    return a;
+  }
+  // Libellés lisibles des références de la table des propositions publiques.
+  function affichagePublics() {
+    return Promise.all([grist.docApi.fetchTable('_grist_Tables'), grist.docApi.fetchTable('_grist_Tables_column')]).then(function (m) {
+      var tabs = lignesDepuisColonnes(m[0]), cols = lignesDepuisColonnes(m[1]);
+      function col(t, c) { var tb = tabs.filter(function (x) { return x.tableId === t; })[0]; return tb && cols.filter(function (x) { return x.parentId === tb.id && x.colId === c; })[0]; }
+      var aff = [];
+      [[T_PUBLICS, 'Reunion', 'Reunions', 'Titre'], [T_PUBLICS, 'Point', 'Points', 'Titre']].forEach(function (r) {
+        var c = col(r[0], r[1]), v = col(r[2], r[3]);
+        if (c && v && !c.visibleCol) { aff.push(['ModifyColumn', r[0], r[1], { visibleCol: v.id }]); aff.push(['SetDisplayFormula', r[0], null, c.id, '$' + r[1] + '.' + r[3]]); }
+      });
+      return aff.length ? grist.docApi.applyUserActions(aff) : null;
+    });
+  }
+  function installerParticipatif(avecPublics) {
+    if (DEMO) { if (configLab) configLab.message('info', 'Mode démonstration : dans Grist, ce bouton ajoute les colonnes et la table au document.'); return; }
+    var a = actionsParticipatif(avecPublics);
+    if (!a.length) return;
+    grist.docApi.applyUserActions(a).then(function () { return avecPublics ? affichagePublics() : null; }).then(function () { return charger(); }).then(function () {
+      if (configLab) { configLab.message('success', avecPublics ? 'Table ' + T_PUBLICS + ' créée. Publiez le questionnaire de proposition sur cette table, puis posez les règles d\'accès (Réglages › Données).' :
+        'Date limite des propositions ajoutée : réglez-la dans les informations de chaque réunion. Posez ensuite les règles d\'accès (Réglages › Données).'); configLab.rafraichir('reglages'); }
+      rendre();
+    }).catch(function (err) {
+      if (configLab) configLab.message('error', 'Ajout impossible : seuls les propriétaires du document peuvent ajouter des colonnes et des tables. (' + ((err && err.message) || err) + ')');
+    });
+  }
+  // Un formulaire Grist publié sur Points permet d'y écrire toutes les colonnes (Statut, Ordre, auteur) : à signaler.
+  function formulairePublieSurPoints() {
+    var t = meta.tables.filter(function (x) { return x.tableId === 'Points'; })[0];
+    if (!t || !meta.sections) return false;
+    return meta.sections.some(function (sec) {
+      if (sec.tableRef !== t.id || sec.parentKey !== 'form') return false;
+      try { var o = JSON.parse(sec.shareOptions || '{}'); return !!(o.publish && o.form); } catch (e) { return false; }
+    });
+  }
+  function blocParticipatif() {
+    var h = '<h2 class="fr-h5 fr-mt-3w">Ordre du jour participatif</h2>' +
+      '<p class="fr-text--sm">L\'équipe propose des points ; la personne qui anime les retient, les reporte ou les écarte. Deux compléments facultatifs :</p>';
+    if (formulairePublieSurPoints()) h += '<div class="fr-alert fr-alert--warning fr-alert--sm fr-mb-2w"><p>Un formulaire Grist est publié sur la table <code>Points</code>. Grist laisse un formulaire publié écrire toutes les colonnes de sa table, y compris le statut et l\'auteur : n\'importe qui peut alors inscrire un point directement à l\'ordre du jour. Dépubliez-le et publiez le formulaire sur <code>' + T_PUBLICS + '</code>.</p></div>';
+    h += '<h3 class="fr-h6">Date limite des propositions</h3>';
+    if (DEMO || participatifPret()) h += '<p class="fr-text--sm">En place : la date se règle dans les informations de chaque réunion. Une fois passée, seule la personne qui anime ajoute des points (règles d\'accès posées depuis Réglages › Données).</p>';
+    else h += '<p class="fr-text--sm">Ajoute les colonnes <code>Fin_propositions</code>, <code>Cloture_points</code> et <code>Cloture_publiques</code> à Reunions, <code>Origine</code> et <code>Hors_delai</code> (calculée) à Points. Rien n\'est renommé ni supprimé.</p>' +
+      '<button type="button" class="fr-btn fr-btn--sm fr-btn--secondary" data-rn-participatif="colonnes">Ajouter la date limite des propositions</button>';
+    h += '<h3 class="fr-h6 fr-mt-2w">Propositions sans compte Grist</h3>';
+    if (DEMO || publicsPrets()) h += '<p class="fr-text--sm">Table <code>' + T_PUBLICS + '</code> en place. Publiez un questionnaire grist-questionnaire sur cette table, jamais sur <code>Points</code>, avec les champs Titre, Description, Type, Duree, Porteur et Nom. Collez son lien dans Publication : chaque réunion « ' + esc(L.statutsReunion[0]) + ' » propose alors « Copier le lien de proposition », avec la réunion déjà choisie (<code>pre_Reunion</code>, à figer ou masquer dans le questionnaire). Les propositions reçues s\'affichent à part, à reprendre ou à écarter ; elles ne comptent plus après la date limite ni quand la réunion quitte sa première étape.</p>';
+    else h += '<p class="fr-text--sm">Crée la table <code>' + T_PUBLICS + '</code>, où un formulaire public dépose les propositions sans toucher à l\'ordre du jour (et ajoute la date limite si elle manque).</p>' +
+      '<button type="button" class="fr-btn fr-btn--sm fr-btn--secondary" data-rn-participatif="publics">Créer la table des propositions sans compte</button>';
+    return h;
   }
   function tablesManquantes() {
     var ids = meta.tables.map(function (t) { return t.tableId; });
@@ -995,6 +1195,9 @@
       actions.push(['AddTable', t, sch[t].map(function (c) { return Object.assign({ id: c[0] }, c[1]); })]);
     });
     actions = actions.concat(actionsColonnesManquantes());
+    // Date limite des propositions : colonnes ajoutées après la création des tables (la formule Hors_delai lit Reunions).
+    var sp = schemaParticipatif();
+    Object.keys(sp).forEach(function (t) { sp[t].forEach(function (c) { if (tablesManquantes().indexOf(t) >= 0 || !aColonne(t, c[0])) actions.push(['AddColumn', t, c[0], Object.assign({}, c[1])]); }); });
     return grist.docApi.applyUserActions(actions).then(function () {
       // Les références affichent un libellé lisible plutôt qu'un numéro.
       return Promise.all([grist.docApi.fetchTable('_grist_Tables'), grist.docApi.fetchTable('_grist_Tables_column')]).then(function (m) {
@@ -1082,6 +1285,13 @@
       }).catch(function () { etat.alerte = { type: 'error', texte: 'Copie impossible depuis ce navigateur. Utilisez « Imprimer ou enregistrer en PDF ».' }; rendre(); });
       return;
     }
+    if (a === 'copier-lien-proposition') {
+      var lien = el.getAttribute('data-lien');
+      (navigator.clipboard ? navigator.clipboard.writeText(lien) : Promise.reject()).then(function () {
+        etat.alerte = { type: 'success', texte: 'Lien de proposition copié : envoyez-le aux personnes sans compte Grist. La réunion y est déjà choisie.' }; rendre();
+      }).catch(function () { etat.alerte = { type: 'info', texte: 'Copie impossible depuis ce navigateur. Lien de proposition : ' + lien }; rendre(); });
+      return;
+    }
     if (a === 'arreter-chrono') { etat.chrono = null; rendre(); return; }
     if (a === 'enregistrer-reglages') { enregistrerReglages(); return; }
     if (a === 'annuler-reglages') { brouillonReglages = null; location.hash = '#/'; return; }
@@ -1094,6 +1304,23 @@
       var champs = { Statut: v };
       if (v === 'Retenu') champs.Ordre = maxOrdre(num(p.Reunion)) + 1;
       executer([['UpdateRecord', 'Points', pid, champs]], { Retenu: 'Point ajouté à l\'ordre du jour.', 'Reporté': 'Point reporté : il sera proposé à la réunion suivante.', 'Écarté': 'Proposition écartée.', 'Proposé': 'Point remis en proposition.' }[v]);
+      return;
+    }
+    if (el.hasAttribute('data-publique')) {
+      var x = idx[T_PUBLICS][num(el.getAttribute('data-publique'))], suite = el.getAttribute('data-valeur');
+      if (!x) return;
+      if (suite !== 'Reprise') { executer([['UpdateRecord', T_PUBLICS, x.id, { Suite: suite }]], 'Proposition écartée.'); return; }
+      var origine = 'formulaire public : ' + (String(x.Nom || '').trim() || 'sans nom') + ' (nom déclaré)';
+      var champsP = { Reunion: num(x.Reunion), Titre: String(x.Titre || '').trim(), Description: x.Description || '',
+        Type: L.typesPoint.indexOf(x.Type) >= 0 ? x.Type : L.typesPoint[0], Duree: num(x.Duree) > 0 ? Math.min(num(x.Duree), 600) : DUREE_DEFAUT,
+        Porteur: String(x.Porteur || '').trim(), Statut: 'Proposé' };
+      if (DEMO || aColonne('Points', 'Origine')) champsP.Origine = origine;
+      else champsP.Description = (champsP.Description ? champsP.Description + '\n\n' : '') + 'Reçu par ' + origine + '.';
+      el.disabled = true;
+      ecrire([['AddRecord', 'Points', null, champsP]]).then(function (res) {
+        var nid = Array.isArray(res) ? res[0] : (res && res.retValues ? res.retValues[0] : null);
+        return executer([['UpdateRecord', T_PUBLICS, x.id, nid ? { Suite: 'Reprise', Point: nid } : { Suite: 'Reprise' }]], 'Proposition reprise : elle figure dans les propositions, à retenir ou non.');
+      }).catch(refus);
       return;
     }
     if (el.hasAttribute('data-deplacer')) {
@@ -1189,7 +1416,11 @@
       if (!String(b.Titre || '').trim()) { etat.alerte = { type: 'error', texte: 'Indiquez un titre.' }; rendre(); return; }
       var manq2 = manquesPerso(b);
       if (manq2.length) { etat.alerte = { type: 'error', texte: 'Renseignez : ' + manq2.join(', ') + '.' }; rendre(); return; }
-      executer([['UpdateRecord', 'Reunions', rid, champsReunionComplets(b)]], 'Informations enregistrées.', function () { delete etat.brouillons['infos-' + rid]; });
+      // Seuls les champs modifiés sont envoyés : une règle sur un champ inchangé (animation, date limite) ne bloque pas les autres.
+      var avant = idx.Reunions[rid] || {}, nouveaux = champsReunionComplets(b), modifs = {};
+      Object.keys(nouveaux).forEach(function (k) { var x = avant[k], y = nouveaux[k]; if (!((x === y) || ((x === null || x === undefined || x === '' || x === 0) && (y === null || y === undefined || y === '' || y === 0)))) modifs[k] = y; });
+      if (!Object.keys(modifs).length) { etat.alerte = { type: 'info', texte: 'Aucune modification à enregistrer.' }; delete etat.brouillons['infos-' + rid]; rendre(); return; }
+      executer([['UpdateRecord', 'Reunions', rid, modifs]], 'Informations enregistrées.', function () { delete etat.brouillons['infos-' + rid]; });
       return;
     }
     if (type === 'point') {
