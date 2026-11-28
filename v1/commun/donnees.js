@@ -4,21 +4,24 @@
  *
  * Trois services, tous déclenchés par un clic d'un propriétaire (rien n'est modifié à l'ouverture) :
  *  1. Tables partagées : liste les tables de l'outil et les autres outils qui les lisent ou les écrivent.
- *  2. Règles d'accès : lit l'état des règles de chaque table et installe les règles proposées par l'outil,
- *     seulement sur les tables (ou colonnes) qui n'ont encore aucune règle. Les règles existantes ne sont jamais modifiées.
+ *  2. Règles d'accès : lit l'état des règles de chaque table et installe les règles proposées par l'outil
+ *     sur les tables (ou colonnes) qui n'ont encore aucune règle. Les règles posées par ailleurs ne sont jamais modifiées.
+ *     Seules exceptions : les règles d'une version précédente du même outil (reconnues à leur message, opt.anciens),
+ *     remplacées par les règles actuelles quand la table ne porte rien d'autre, et un attribut d'utilisateur de l'outil
+ *     dont la définition a changé.
  *  3. Liens : ajoute des colonnes calculées (formules) qui relient un nom saisi en texte à sa fiche de la table
  *     Personnes, ou une ligne à un projet. Le texte d'origine est gardé ; supprimer une colonne de lien ne perd aucune donnée.
  *
  * Utilisation :
  *   DonneesLab.lire()                         -> Promise<acl> ({ res, regles } ou { illisible: true })
  *   DonneesLab.html(acl, meta, opt)           -> HTML de la rubrique (opt : voir plus bas)
- *   DonneesLab.installerRegles(acl, regles)   -> Promise (le document se recharge quand les règles changent)
+ *   DonneesLab.installerRegles(acl, meta, regles, anciens) -> Promise (le document se recharge quand les règles changent)
  *   DonneesLab.ajouterLiens(meta, liens)      -> Promise<nombre de colonnes ajoutées>
  * meta : { tables: lignes de _grist_Tables, colonnes: lignes de _grist_Tables_column }
- * opt  : { partage: [[table, autres outils, usage]], regles: [regle], liens: [lien], demo: bool }
+ * opt  : { partage: [[table, autres outils, usage]], regles: [regle], anciens: [memo des règles des versions précédentes], liens: [lien], demo: bool }
  * regle : { table, cols ('*' ou 'A,B'), formule, droits ('-CU'…), memo (message montré par Grist en cas de refus), effet (texte pour la rubrique) }
- *         ou attribut d'utilisateur : { attribut: { name, tableId, lookupColId, charId }, effet } (table « * »), posé seulement
- *         si aucun attribut du même nom n'existe et si la table et la colonne de recherche existent ; à placer avant les règles qui s'en servent.
+ *         ou attribut d'utilisateur : { attribut: { name, tableId, lookupColId, charId }, effet } (table « * »), posé si la table et la colonne
+ *         de recherche existent (mis à jour si un attribut du même nom a une autre définition) ; à placer avant les règles qui s'en servent.
  * lien  : { table, col (colonne créée), type ('Ref:Personnes'), formule, affichage (colonne affichée de la table cible), cible, source (colonne lue), effet,
  *           requis (facultatif : [[table, colonne]] qui doivent exister) }
  * Les boutons portent data-donnees="regles" et data-donnees="liens" : l'outil branche le clic.
@@ -58,40 +61,73 @@
 
   function ressource(acl, t, cols) { return acl.res.filter(function (r) { return r.tableId === t && r.colIds === cols; })[0] || null; }
   function reglesDe(acl, rid) { return rid ? acl.regles.filter(function (r) { return r.resource === rid && (r.aclFormula || r.permissionsText); }) : []; }
-  // État d'une ressource (table entière ou groupe de colonnes) au regard des règles proposées.
-  function etatRessource(acl, t, cols, proposees) {
+  function memeRegle(x, p) { return (x.memo || "") === p.memo && (x.aclFormula || "") === p.formule && (x.permissionsText || "") === p.droits; }
+  // État d'une ressource (table entière ou groupe de colonnes) au regard des règles proposées :
+  // aucune ; outil (règles actuelles en place) ; maj (seulement des règles de l'outil, d'une version précédente) ; autres.
+  function etatRessource(acl, t, cols, proposees, anciens) {
     var r = ressource(acl, t, cols), ex = reglesDe(acl, r && r.id);
     if (!ex.length) return "aucune";
-    var memos = ex.map(function (x) { return x.memo || ""; });
-    return proposees.every(function (p) { return memos.indexOf(p.memo) >= 0; }) ? "outil" : "autres";
+    // Outil sans liste de versions précédentes : comportement d'origine (règles reconnues à leur message seulement).
+    if (!anciens) {
+      var memos = ex.map(function (x) { return x.memo || ""; });
+      return proposees.every(function (p) { return memos.indexOf(p.memo) >= 0; }) ? "outil" : "autres";
+    }
+    if (proposees.every(function (p) { return ex.some(function (x) { return memeRegle(x, p); }); })) return "outil";
+    var connus = proposees.map(function (p) { return p.memo; }).concat(anciens || []);
+    return ex.every(function (x) { return connus.indexOf(x.memo || "") >= 0; }) ? "maj" : "autres";
   }
-  function attributExiste(acl, nom) {
-    return acl.regles.some(function (x) { if (!x.userAttributes) return false; try { return JSON.parse(x.userAttributes).name === nom; } catch (e) { return false; } });
+  function attributDe(acl, nom) {
+    return acl.regles.filter(function (x) { if (!x.userAttributes) return false; try { return JSON.parse(x.userAttributes).name === nom; } catch (e) { return false; } })[0] || null;
   }
-  // Règles proposées applicables : tables (et colonnes) présentes, sans aucune règle encore.
-  function aInstaller(acl, meta, regles) {
-    var groupes = {}, attributs = [];
+  function attributExiste(acl, nom) { return !!attributDe(acl, nom); }
+  function attributAJour(acl, a) {
+    var x = attributDe(acl, a.name), d;
+    if (!x) return false;
+    try { d = JSON.parse(x.userAttributes); } catch (e) { return false; }
+    return ["name", "tableId", "lookupColId", "charId"].every(function (k) { return d[k] === a[k]; });
+  }
+  // Ce qu'il faut faire : attributs à poser ou mettre à jour, règles à ajouter, règles d'une version précédente à retirer.
+  function planifier(acl, meta, regles, anciens) {
+    var groupes = {}, plan = { attributs: [], ajouts: [], retraits: [] };
     regles.forEach(function (r) {
       if (r.attribut) {
-        if (colonne(meta, r.attribut.tableId, r.attribut.lookupColId) && !attributExiste(acl, r.attribut.name)) attributs.push(r);
+        if (colonne(meta, r.attribut.tableId, r.attribut.lookupColId) && !attributAJour(acl, r.attribut)) plan.attributs.push(r);
         return;
       }
       if (!table(meta, r.table)) return;
       if (r.cols !== "*" && r.cols.split(",").some(function (c) { return !colonne(meta, r.table, c); })) return;
       var k = r.table + "|" + r.cols; (groupes[k] = groupes[k] || []).push(r);
     });
-    var res = attributs.slice();
     Object.keys(groupes).forEach(function (k) {
-      var g = groupes[k];
-      if (etatRessource(acl, g[0].table, g[0].cols, g) === "aucune") res = res.concat(g);
+      var g = groupes[k], e = etatRessource(acl, g[0].table, g[0].cols, g, anciens);
+      if (e === "aucune") plan.ajouts = plan.ajouts.concat(g);
+      if (e === "maj") {
+        plan.ajouts = plan.ajouts.concat(g);
+        var rs = ressource(acl, g[0].table, g[0].cols);
+        plan.retraits = plan.retraits.concat(reglesDe(acl, rs.id).map(function (x) { return x.id; }));
+      }
     });
-    return res;
+    return plan;
   }
+  // Règles proposées applicables (pour le compte affiché) : attributs, puis règles à ajouter ou à remplacer.
+  function aInstaller(acl, meta, regles, anciens) {
+    var p = planifier(acl, meta, regles, anciens);
+    return p.attributs.concat(p.ajouts);
+  }
+  function aMettreAJour(acl, meta, regles, anciens) { return planifier(acl, meta, regles, anciens).retraits.length > 0; }
 
-  function installerRegles(acl, meta, regles) {
+  function installerRegles(acl, meta, regles, anciens) {
     if (acl.illisible) return Promise.reject(new Error("Seuls les propriétaires du document peuvent poser des règles d'accès."));
-    var plan = aInstaller(acl, meta, regles);
-    if (!plan.length) return Promise.resolve(0);
+    var pl = planifier(acl, meta, regles, anciens);
+    var plan = pl.ajouts.slice(), actions = [];
+    if (pl.retraits.length) actions.push(["BulkRemoveRecord", "_grist_ACLRules", pl.retraits]);
+    // Attribut déjà présent avec une autre définition : mis à jour sur place ; sinon ajouté en tête des règles.
+    pl.attributs.forEach(function (a) {
+      var x = attributDe(acl, a.attribut.name);
+      if (x) actions.push(["UpdateRecord", "_grist_ACLRules", x.id, { userAttributes: JSON.stringify(a.attribut) }]);
+      else plan.unshift(a);
+    });
+    if (!plan.length && !actions.length) return Promise.resolve(0);
     var nouvelles = [], neg = {};
     plan.forEach(function (p) { if (p.attribut) { p.table = "*"; p.cols = "*"; } });
     plan.forEach(function (p) {
@@ -99,18 +135,18 @@
       if (!ressource(acl, p.table, p.cols) && nouvelles.indexOf(k) < 0) { nouvelles.push(k); neg[k] = -nouvelles.length; }
     });
     var base = acl.regles.reduce(function (m, r) { return Math.max(m, r.rulePos || 0); }, 0) + 1;
-    var actions = [];
     if (nouvelles.length) actions.push(["BulkAddRecord", "_grist_ACLResources", nouvelles.map(function (k) { return neg[k]; }), {
       tableId: nouvelles.map(function (k) { return k.split("|")[0]; }), colIds: nouvelles.map(function (k) { return k.split("|")[1]; }) }]);
-    actions.push(["BulkAddRecord", "_grist_ACLRules", plan.map(function () { return null; }), {
+    if (plan.length) actions.push(["BulkAddRecord", "_grist_ACLRules", plan.map(function () { return null; }), {
       resource: plan.map(function (p) { var r = ressource(acl, p.table, p.cols); return r ? r.id : neg[p.table + "|" + p.cols]; }),
       aclFormula: plan.map(function (p) { return p.attribut ? "" : p.formule; }), permissionsText: plan.map(function (p) { return p.attribut ? "" : p.droits; }),
       rulePos: plan.map(function (p, i) { return base + i; }), memo: plan.map(function (p) { return p.attribut ? "" : p.memo; }),
       userAttributes: plan.map(function (p) { return p.attribut ? JSON.stringify(p.attribut) : ""; })
     }]);
+    var n = plan.length + pl.attributs.length - plan.filter(function (p) { return p.attribut; }).length;
     // Une seule action : Grist recharge le document (et le widget) dès que les règles changent ; la coupure n'est pas un échec.
-    return grist.docApi.applyUserActions(actions).then(function () { return plan.length; }, function (err) {
-      if (coupure(err)) return plan.length;
+    return grist.docApi.applyUserActions(actions).then(function () { return n; }, function (err) {
+      if (coupure(err)) return n;
       throw err;
     });
   }
@@ -156,22 +192,23 @@
     } else if (acl.illisible) {
       h += "<p class=\"fr-text--sm\">Seuls les propriétaires du document voient les règles d'accès.</p>";
     } else {
-      var lib = { aucune: "aucune règle", outil: "règles de l'outil en place", autres: "règles posées par ailleurs, gardées telles quelles" };
+      var lib = { aucune: "aucune règle", outil: "règles de l'outil en place", maj: "règles d'une version précédente de l'outil, à mettre à jour", autres: "règles posées par ailleurs, gardées telles quelles" };
       var vues = {};
       (opt.tables || []).forEach(function (t) {
         var g = regles.filter(function (r) { return !r.attribut && r.table === t && r.cols === "*"; });
-        var gc = regles.filter(function (r) { return r.table === t && r.cols !== "*"; });
-        vues[t] = !table(meta, t) ? "table absente" : lib[etatRessource(acl, t, "*", g.length ? g : [{ memo: "\u0000" }])] + " sur la table" +
-          (gc.length ? " ; colonnes " + gc[0].cols.split(",").join(", ") + " : " + lib[etatRessource(acl, t, gc[0].cols, gc)] : "") +
-          (g.length || gc.length ? "" : " (l'outil n'en propose pas)");
+        var cols = [];
+        regles.forEach(function (r) { if (!r.attribut && r.table === t && r.cols !== "*" && cols.indexOf(r.cols) < 0) cols.push(r.cols); });
+        vues[t] = !table(meta, t) ? "table absente" : lib[etatRessource(acl, t, "*", g.length ? g : [{ memo: "\u0000" }], opt.anciens)] + " sur la table" +
+          cols.map(function (c) { return " ; colonnes " + c.split(",").join(", ") + " : " + lib[etatRessource(acl, t, c, regles.filter(function (r) { return r.table === t && r.cols === c; }), opt.anciens)]; }).join("") +
+          (g.length || cols.length ? "" : " (l'outil n'en propose pas)");
       });
       h += "<ul class=\"fr-text--sm\">" + Object.keys(vues).map(function (t) { return "<li><code>" + esc(t) + "</code> : " + esc(vues[t]) + "</li>"; }).join("") + "</ul>";
       if (regles.length) {
         h += "<p class=\"fr-text--sm\">Règles proposées par l'outil (les propriétaires du document gardent tous les droits) :</p><ul class=\"fr-text--sm\">" +
-          regles.map(function (r) { if (r.attribut) return "<li>Attribut <code>user." + esc(r.attribut.name) + "</code> : " + esc(r.effet) + (colonne(meta, r.attribut.tableId, r.attribut.lookupColId) ? (attributExiste(acl, r.attribut.name) ? " (en place)" : "") : " (colonne " + esc(r.attribut.tableId + "." + r.attribut.lookupColId) + " absente : l'attribut et les règles qui s'en servent attendront)") + "</li>"; return "<li><code>" + esc(r.table + (r.cols === "*" ? "" : "." + r.cols.split(",").join(", "))) + "</code> : " + esc(r.effet) + (table(meta, r.table) ? "" : " (table absente de ce document : la règle sera posée quand elle existera)") + "</li>"; }).join("") + "</ul>";
-        var n = aInstaller(acl, meta, regles).length;
-        h += n ? "<p class=\"fr-text--sm\">Les règles ne sont ajoutées que là où il n'y en a aucune ; les règles existantes ne sont pas modifiées. Grist recharge ensuite le document. Pour vérifier : <strong>Règles d'accès</strong>, puis <strong>Voir en tant que</strong> un éditeur ou un lecteur.</p>" +
-          "<p><button type=\"button\" class=\"fr-btn fr-btn--sm\" data-donnees=\"regles\">Installer les règles proposées (" + n + ")</button></p>"
+          regles.map(function (r) { if (r.attribut) return "<li>Attribut <code>user." + esc(r.attribut.name) + "</code> : " + esc(r.effet) + (colonne(meta, r.attribut.tableId, r.attribut.lookupColId) ? (attributAJour(acl, r.attribut) ? " (en place)" : attributExiste(acl, r.attribut.name) ? " (version précédente, à mettre à jour)" : "") : " (colonne " + esc(r.attribut.tableId + "." + r.attribut.lookupColId) + " absente : l'attribut et les règles qui s'en servent attendront)") + "</li>"; return "<li><code>" + esc(r.table + (r.cols === "*" ? "" : "." + r.cols.split(",").join(", "))) + "</code> : " + esc(r.effet) + (table(meta, r.table) ? "" : " (table absente de ce document : la règle sera posée quand elle existera)") + "</li>"; }).join("") + "</ul>";
+        var n = aInstaller(acl, meta, regles, opt.anciens).length, maj = aMettreAJour(acl, meta, regles, opt.anciens);
+        h += n ? "<p class=\"fr-text--sm\">Les règles ne sont ajoutées que là où il n'y en a aucune" + (maj ? ", ou remplacent celles d'une version précédente de l'outil" : "") + " ; les règles posées par ailleurs ne sont pas modifiées. Grist recharge ensuite le document. Pour vérifier : <strong>Règles d'accès</strong>, puis <strong>Voir en tant que</strong> un éditeur ou un lecteur.</p>" +
+          "<p><button type=\"button\" class=\"fr-btn fr-btn--sm\" data-donnees=\"regles\">" + (maj ? "Mettre à jour les règles d'accès (" : "Installer les règles proposées (") + n + ")</button></p>"
           : "<p><span class=\"fr-badge fr-badge--success fr-badge--sm\">Rien à installer</span></p>";
       }
       if (opt.noteRegles) h += "<p class=\"fr-text--sm\">" + opt.noteRegles + "</p>";
@@ -191,5 +228,5 @@
   }
 
   window.DonneesLab = { lire: lire, html: html, installerRegles: installerRegles, ajouterLiens: ajouterLiens,
-    aInstaller: aInstaller, liensManquants: liensManquants, lienPersonne: lienPersonne, formulePersonne: formulePersonne };
+    aInstaller: aInstaller, aMettreAJour: aMettreAJour, liensManquants: liensManquants, lienPersonne: lienPersonne, formulePersonne: formulePersonne };
 })();

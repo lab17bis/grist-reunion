@@ -2,6 +2,10 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+
+## 2026-11-28 (fichier commun des données)
+- `commun/donnees.js` mis à jour (identique dans grist-management, grist-reunion et grist-consultation) : sait remplacer les règles d'une version précédente d'un outil qui le demande et mettre à jour un attribut d'utilisateur. Rien ne change pour cet outil : ses règles restent reconnues comme avant.
+
 ## 2026-11-28 (fichier partagé des données)
 - Fichier partagé `commun/donnees.js` mis à jour (identique dans grist-management, grist-reunion et grist-consultation) : il sait poser un attribut d'utilisateur (par exemple la fiche de la personne connectée) avec les règles d'accès proposées. Rien ne change pour cet outil.
 
