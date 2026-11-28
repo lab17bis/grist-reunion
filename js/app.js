@@ -258,20 +258,21 @@
     return Promise.resolve({ retValues: ret });
   }
 
-  function executer(actions, message, apres) {
+  function executer(actions, message, apres, motif) {
     return ecrire(actions).then(function (res) {
       if (apres) apres(res);
       etat.alerte = message ? { type: 'success', texte: message } : null;
       return DEMO ? null : charger();
-    }).then(rendre).catch(refus);
+    }).then(rendre).catch(function (err) { refus(err, motif); });
   }
-  // Refus d'une règle d'accès : Grist transmet le message de la règle (memo), plus parlant que le détail technique.
-  function refus(err) {
+  // Refus d'une règle d'accès. Dans un widget, Grist ne transmet pas le message de la règle (memo) : l'action
+  // fournit son motif probable (motif), affiché à la place du détail technique.
+  function refus(err, motif) {
     var memos = ((err && err.details && err.details.memos) || []).map(function (m) { return typeof m === 'string' ? m : (m && m.text) || ''; })
       .filter(function (m, i, l) { return m && l.indexOf(m) === i; });
     var msg = String((err && err.message) || err);
     etat.alerte = { type: 'error', texte: memos.length ? 'Enregistrement refusé : ' + memos.join(' ') :
-      /access rules/i.test(msg) ? 'Enregistrement refusé par les règles d\'accès du document.' :
+      /access rules/i.test(msg) ? 'Enregistrement refusé par les règles d\'accès du document.' + (motif ? ' ' + motif : '') :
       'Enregistrement refusé par Grist. Vérifiez vos droits sur le document. (' + msg + ')' };
     rendre();
   }
@@ -1307,13 +1308,14 @@
       var pid = num(el.getAttribute('data-point-statut')), v = el.getAttribute('data-valeur'), p = idx.Points[pid];
       var champs = { Statut: v };
       if (v === 'Retenu') champs.Ordre = maxOrdre(num(p.Reunion)) + 1;
-      executer([['UpdateRecord', 'Points', pid, champs]], { Retenu: 'Point ajouté à l\'ordre du jour.', 'Reporté': 'Point reporté : il sera proposé à la réunion suivante.', 'Écarté': 'Proposition écartée.', 'Proposé': 'Point remis en proposition.' }[v]);
+      executer([['UpdateRecord', 'Points', pid, champs]], { Retenu: 'Point ajouté à l\'ordre du jour.', 'Reporté': 'Point reporté : il sera proposé à la réunion suivante.', 'Écarté': 'Proposition écartée.', 'Proposé': 'Point remis en proposition.' }[v], null, M_STATUT);
       return;
     }
     if (el.hasAttribute('data-publique')) {
       var x = idx[T_PUBLICS][num(el.getAttribute('data-publique'))], suite = el.getAttribute('data-valeur');
       if (!x) return;
-      if (suite !== 'Reprise') { executer([['UpdateRecord', T_PUBLICS, x.id, { Suite: suite }]], 'Proposition écartée.'); return; }
+      var mp = 'Seule la personne qui anime reprend ou écarte une proposition reçue par formulaire.';
+      if (suite !== 'Reprise') { executer([['UpdateRecord', T_PUBLICS, x.id, { Suite: suite }]], 'Proposition écartée.', null, mp); return; }
       var origine = 'formulaire public : ' + (String(x.Nom || '').trim() || 'sans nom') + ' (nom déclaré)';
       var champsP = { Reunion: num(x.Reunion), Titre: String(x.Titre || '').trim(), Description: x.Description || '',
         Type: L.typesPoint.indexOf(x.Type) >= 0 ? x.Type : L.typesPoint[0], Duree: num(x.Duree) > 0 ? Math.min(num(x.Duree), 600) : DUREE_DEFAUT,
@@ -1323,8 +1325,8 @@
       el.disabled = true;
       ecrire([['AddRecord', 'Points', null, champsP]]).then(function (res) {
         var nid = Array.isArray(res) ? res[0] : (res && res.retValues ? res.retValues[0] : null);
-        return executer([['UpdateRecord', T_PUBLICS, x.id, nid ? { Suite: 'Reprise', Point: nid } : { Suite: 'Reprise' }]], 'Proposition reprise : elle figure dans les propositions, à retenir ou non.');
-      }).catch(refus);
+        return executer([['UpdateRecord', T_PUBLICS, x.id, nid ? { Suite: 'Reprise', Point: nid } : { Suite: 'Reprise' }]], 'Proposition reprise : elle figure dans les propositions, à retenir ou non.', null, mp);
+      }).catch(function (err) { refus(err, propositionsOuvertes(idx.Reunions[num(x.Reunion)]) ? mp : M_HORS_ANIM); });
       return;
     }
     if (el.hasAttribute('data-deplacer')) {
@@ -1335,7 +1337,7 @@
       var actions = [];
       liste.splice(i, 1); liste.splice(i + sens, 0, p1);
       liste.forEach(function (x, k) { if (x.Ordre !== k + 1) actions.push(['UpdateRecord', 'Points', x.id, { Ordre: k + 1 }]); });
-      executer(actions);
+      executer(actions, null, null, M_STATUT);
       return;
     }
     if (el.hasAttribute('data-supprimer')) {
@@ -1424,14 +1426,15 @@
       var avant = idx.Reunions[rid] || {}, nouveaux = champsReunionComplets(b), modifs = {};
       Object.keys(nouveaux).forEach(function (k) { var x = avant[k], y = nouveaux[k]; if (!((x === y) || ((x === null || x === undefined || x === '' || x === 0) && (y === null || y === undefined || y === '' || y === 0)))) modifs[k] = y; });
       if (!Object.keys(modifs).length) { etat.alerte = { type: 'info', texte: 'Aucune modification à enregistrer.' }; delete etat.brouillons['infos-' + rid]; rendre(); return; }
-      executer([['UpdateRecord', 'Reunions', rid, modifs]], 'Informations enregistrées.', function () { delete etat.brouillons['infos-' + rid]; });
+      executer([['UpdateRecord', 'Reunions', rid, modifs]], 'Informations enregistrées.', function () { delete etat.brouillons['infos-' + rid]; }, M_ANIM);
       return;
     }
     if (type === 'point') {
       cle = 'point-' + rid; b = brouillon(cle);
       if (!String(b.Titre || '').trim()) { etat.alerte = { type: 'error', texte: 'Indiquez le sujet du point.' }; rendre(); return; }
       executer([['AddRecord', 'Points', null, { Reunion: rid, Titre: String(b.Titre).trim(), Description: b.Description || '', Type: b.Type || L.typesPoint[0],
-        Duree: num(b.Duree) || DUREE_DEFAUT, Porteur: b.Porteur || '', Statut: 'Proposé' }]], 'Point proposé. Il apparaît dans les propositions.', function () { delete etat.brouillons[cle]; });
+        Duree: num(b.Duree) || DUREE_DEFAUT, Porteur: b.Porteur || '', Statut: 'Proposé' }]], 'Point proposé. Il apparaît dans les propositions.', function () { delete etat.brouillons[cle]; },
+        propositionsOuvertes(idx.Reunions[rid]) ? null : M_HORS_ANIM);
       return;
     }
     if (type === 'decision') {

@@ -3,6 +3,15 @@
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
 
+## 2026-11-28 (ordre du jour participatif)
+- Date limite des propositions de points (facultative, dans les informations de chaque réunion). Après la date, le formulaire « Proposer un point » est replié et Grist refuse les nouveaux points, sauf ceux de la personne qui anime. Le dernier point reçu est noté (`Cloture_points`) : un point antidaté est refusé aussi.
+- Propositions sans compte Grist : table `Propositions_publiques` pour un questionnaire public, affichage à part (« Reçues par formulaire »), boutons Reprendre et Écarter, bouton « Copier le lien de proposition » (lien du questionnaire dans *Publication*). Alerte si un formulaire Grist est publié sur `Points`, qui laisserait n'importe qui inscrire un point à l'ordre du jour.
+- Ordre du jour réservé à la personne qui anime (règles proposées, avec l'annuaire) : retenir, reporter, écarter, ordonner, reprendre une proposition publique, changer la date limite ou l'animation. Reconnaissance par l'adresse de `Personnes`, seulement si un seul nom correspond.
+- Les informations d'une réunion n'envoient plus que les champs modifiés.
+- Message de refus : l'outil affiche le motif probable de l'action refusée (Grist ne transmet pas le message des règles à un widget).
+- Rien n'est retiré : les colonnes et la table sont ajoutées sur demande dans les documents existants ; un document installé à partir de cette version reçoit la date limite d'office.
+- Vérifié dans Grist réel (document de test, *Voir en tant que* un agent et une animatrice) : propositions, refus de retenir ou d'ordonner, date limite et point antidaté refusés, passation de l'animation, propositions publiques recevables ou non selon la date et l'étape, reprise par le widget, texte HTML neutralisé.
+
 ## 2026-11-28 (fichier commun des données)
 - `commun/donnees.js` mis à jour (identique dans grist-management, grist-reunion et grist-consultation) : sait remplacer les règles d'une version précédente d'un outil qui le demande et mettre à jour un attribut d'utilisateur. Rien ne change pour cet outil : ses règles restent reconnues comme avant.
 

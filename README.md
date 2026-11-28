@@ -8,14 +8,14 @@ Tout se règle dans Grist, sans toucher au code : en-tête et pied de page, inst
 
 | Moment | Ce que l'outil permet |
 | --- | --- |
-| **Avant** | Créer une réunion, recueillir les propositions de points de l'équipe (sujet, précisions, type, durée souhaitée, qui présente), les retenir, les reporter ou les écarter, ordonner l'ordre du jour. Les horaires de chaque point se calculent et un avertissement apparaît si l'ordre du jour dépasse la durée prévue |
+| **Avant** | Créer une réunion, recueillir les propositions de points de l'équipe (sujet, précisions, type, durée souhaitée, qui présente), les retenir, les reporter ou les écarter, ordonner l'ordre du jour. Les horaires de chaque point se calculent et un avertissement apparaît si l'ordre du jour dépasse la durée prévue. En option : une date limite des propositions, des propositions envoyées sans compte Grist par un formulaire, et l'ordre du jour réservé à la personne qui anime (voir *Ordre du jour participatif*) |
 | **Pendant** | Prendre des notes point par point, ajouter des décisions et des actions (responsable, échéance), suivre le temps avec un minuteur, marquer un point traité ou le reporter, revoir les actions encore ouvertes des réunions précédentes |
 | **Après** | Un compte rendu au DSFR : informations pratiques, notes, décisions, relevé des actions, points reportés. Impression ou PDF, copie du texte pour un courriel, marquage « diffusé » |
 | **Entre deux réunions** | *Suivi des actions* : toutes les actions ouvertes (en retard, dans les 7 jours, plus tard, sans échéance), filtrables par responsable et par instance. *Préparer la réunion suivante* reprend les informations pratiques et propose les points reportés |
 
 Une **instance** regroupe les réunions d'une même série (réunion d'équipe, comité de pilotage…). Les actions ouvertes d'une instance réapparaissent à la réunion suivante de la même instance.
 
-L'outil s'utilise **dans Grist** : chaque personne qui propose un point ou prend des notes doit être connectée au document. Pour recueillir des propositions de personnes qui n'ont pas accès au document, branchez [grist-questionnaire](https://github.com/lab17bis/grist-questionnaire) sur la table `Points`.
+L'outil s'utilise **dans Grist** : chaque personne qui propose un point ou prend des notes doit être connectée au document. Pour recueillir des propositions de personnes qui n'ont pas accès au document, branchez [grist-questionnaire](https://github.com/lab17bis/grist-questionnaire) sur la table `Propositions_publiques`, **jamais sur `Points`** : un formulaire Grist publié écrit toutes les colonnes de sa table sans tenir compte des règles d'accès, il pourrait inscrire un point directement à l'ordre du jour.
 
 Démonstration avec des données fictives (rien n'est enregistré) : <https://lab17bis.github.io/grist-reunion/v1/>
 
@@ -37,6 +37,22 @@ Les réglages sont enregistrés en JSON dans la **description de la colonne `Con
 
 La section *Champs supplémentaires des réunions* permet d'ajouter ses propres champs à la fiche d'une réunion (texte court ou long, choix dans une liste, date, nombre ; obligatoires ou non). Chaque champ devient une colonne de la table `Reunions`, créée à l'enregistrement des réglages ; il apparaît dans le formulaire de la réunion et dans le compte rendu. Retirer un champ des réglages ne supprime ni la colonne ni ses données.
 
+## Ordre du jour participatif
+
+L'équipe propose des points ; la personne qui anime les retient, les reporte ou les écarte. Trois compléments facultatifs, à activer dans *Réglages › Général* puis *Réglages › Données* (un propriétaire du document) :
+
+| Complément | Ce qu'il fait | Ce qu'il demande |
+| --- | --- | --- |
+| **Date limite des propositions** | Un champ « Date limite des propositions de points » dans les informations de chaque réunion (dernier jour compris). Ensuite, le formulaire « Proposer un point » est replié et Grist refuse les nouveaux points, sauf ceux de la personne qui anime. | Bouton *Ajouter la date limite des propositions* (déjà présent dans un document installé depuis le 28/11/2026), puis la règle d'accès proposée. |
+| **Propositions sans compte Grist** | Une table `Propositions_publiques`, où un questionnaire public dépose les propositions sans toucher à l'ordre du jour. Elles s'affichent à part (« Reçues par formulaire »), avec le nom déclaré, à reprendre dans les propositions ou à écarter. Chaque réunion en préparation propose « Copier le lien de proposition », avec la réunion déjà choisie. | Bouton *Créer la table des propositions sans compte*, un questionnaire [grist-questionnaire](https://github.com/lab17bis/grist-questionnaire) sur cette table (champs Titre, Description, Type, Duree, Porteur, Nom ; champ Reunion figé ou masqué), son lien dans *Publication*. |
+| **Ordre du jour réservé à l'animation** | Seule la personne qui anime retient, reporte, écarte ou ordonne les points, reprend ou écarte les propositions reçues par formulaire, change la date limite et passe l'animation à une autre personne. Les autres ajoutent des points seulement comme propositions. | La table `Personnes` (annuaire) avec la colonne `Email`, les colonnes de lien `Animation_email` et les règles d'accès proposées (*Réglages › Données*). |
+
+**Comment Grist tient la date limite.** La date d'une proposition (`Propose_le`, `Envoye_le`) peut être falsifiée par un envoi fait exprès. Quand la date limite est passée, l'outil note donc le numéro du dernier point reçu (`Reunions.Cloture_points`, et `Cloture_publiques` pour le formulaire) : tout point plus récent est refusé, quelle que soit sa date. Seules la personne qui anime et les propriétaires écrivent ces colonnes ; le gel se pose à la première ouverture de l'outil par l'une d'elles après la date limite. Les propositions par formulaire se ferment aussi quand la réunion quitte sa première étape. Repousser la date rouvre.
+
+**Comment la personne qui anime est reconnue.** Par son nom dans le champ Animation, retrouvé dans `Personnes` : son adresse (`Animation_email`) n'est retenue que si un seul nom correspond, pour qu'un homonyme ajouté exprès ne prenne pas sa place. Cette protection vaut ce que valent les règles de `Personnes` : si un éditeur peut modifier l'adresse d'une autre fiche, il peut prendre sa place. Vérifiez avec *Voir en tant que*.
+
+**Limites.** Dans un widget, Grist ne transmet pas le message d'une règle refusée : l'outil affiche le motif probable de l'action refusée. Les boutons Retenir, Reporter et Écarter restent visibles pour tout le monde, car un widget ne connaît pas l'adresse de la personne connectée : c'est Grist qui refuse. Sans les colonnes `Animation_email`, la date limite n'admet plus que les propriétaires.
+
 ## Modèle de données
 
 | Table | Colonnes |
@@ -44,6 +60,7 @@ La section *Champs supplémentaires des réunions* permet d'ajouter ses propres 
 | `Reunions` | `Titre`, `Instance` (choix), `Date` (date), `Heure` (texte, « 09:30 »), `Duree_prevue` (entier, minutes), `Lieu`, `Animation`, `Secretariat`, `Participants`, `Excuses`, `Objectif`, `Statut` (choix), vos champs supplémentaires éventuels (une colonne chacun), `Config_reunion` |
 | `Points` | `Reunion` (référence), `Titre`, `Description`, `Type` (choix), `Duree` (entier, minutes), `Porteur`, `Statut` (Proposé, Retenu, Reporté, Écarté), `Ordre` (nombre), `Notes`, `Traite` (case à cocher), `Propose_par` et `Propose_le` (remplis par Grist à la création : `user.Name` et `NOW()`) |
 | `Decisions` | `Reunion` (référence), `Point` (référence), `Texte` |
+| Ordre du jour participatif (facultatif) | `Reunions.Fin_propositions` (date), `Reunions.Cloture_points` et `Cloture_publiques` (entiers, posés par l'outil) ; `Points.Origine` (texte), `Points.Hors_delai` (calculée) ; table `Propositions_publiques` : `Reunion`, `Titre`, `Description`, `Type`, `Duree`, `Porteur`, `Nom` (déclaré), `Envoye_le` (`NOW()` à la création), `Recevable` (calculée), `Suite` (Reprise, Écartée), `Point` (référence au point créé) ; colonnes de lien `Animation_email` (Reunions, Points, Propositions_publiques) |
 | `Actions_reunion` | `Reunion` (référence), `Point` (référence), `Intitule`, `Responsable` (texte), `Echeance` (date), `Etat` (choix) |
 
 Les quatre statuts de `Points` sont utilisés par le code : ne les renommez pas. La table des actions s'appelle `Actions_reunion` pour pouvoir partager un document avec [grist-projet](https://github.com/lab17bis/grist-projet), qui a sa propre table `Actions`.
@@ -100,8 +117,8 @@ Ce que fait cet outil : Il ne crée pas de table de personnes. Si `Personnes` ex
 
 **Réglages › Données** montre, pour ce document : les tables partagées et les outils qui s'en servent ; l'état des règles d'accès ; les colonnes de lien. Rien n'est modifié sans un clic d'un propriétaire.
 
-- **Règle d'accès proposée** : l'auteur et la date d'une proposition de point (`Points.Propose_par`, `Points.Propose_le`) ne se modifient pas, sauf par les propriétaires. Elle est posée à l'installation des tables ; dans un document existant, bouton *Installer les règles proposées*. Une règle n'est ajoutée que sur une table ou une colonne qui n'en a aucune : les règles existantes ne sont jamais modifiées. L'outil ne restreint pas la suppression des réunions : le suivi de projets crée et supprime aussi des lignes de `Reunions` (rendez-vous d'un projet).
-- **Colonnes de lien** (bouton *Ajouter les colonnes de lien*) : `Points.Porteur_fiche`, `Actions_reunion.Responsable_fiche`, `Reunions.Animation_fiche` et `Reunions.Secretariat_fiche` relient le nom saisi à la fiche de `Personnes` (même nom, sans tenir compte des majuscules ni des espaces autour) ; `Actions_reunion.Projet` reprend le projet de la réunion (si `Reunions.Projet` existe). Ce sont des colonnes calculées par Grist : le texte saisi est gardé, une case vide signale un nom absent de l'annuaire ou écrit autrement, et supprimer une de ces colonnes ne perd aucune donnée. Le champ Participants, qui contient plusieurs noms, n'est pas relié.
+- **Règles d'accès proposées** : l'auteur et la date d'une proposition de point (`Points.Propose_par`, `Points.Propose_le`) ne se modifient pas, sauf par les propriétaires. Avec l'ordre du jour participatif : date limite, ordre du jour réservé à l'animation, propositions reçues par formulaire non modifiables, non supprimables et illisibles sans compte (voir *Ordre du jour participatif*). Les règles d'une version précédente de l'outil sont remplacées au clic. Elle est posée à l'installation des tables ; dans un document existant, bouton *Installer les règles proposées*. Une règle n'est ajoutée que sur une table ou une colonne qui n'en a aucune : les règles existantes ne sont jamais modifiées. L'outil ne restreint pas la suppression des réunions : le suivi de projets crée et supprime aussi des lignes de `Reunions` (rendez-vous d'un projet).
+- **Colonnes de lien** (bouton *Ajouter les colonnes de lien*) : `Reunions.Animation_email`, `Points.Animation_email` et `Propositions_publiques.Animation_email` donnent l'adresse de la personne qui anime, pour les règles d'accès ; `Points.Porteur_fiche`, `Actions_reunion.Responsable_fiche`, `Reunions.Animation_fiche` et `Reunions.Secretariat_fiche` relient le nom saisi à la fiche de `Personnes` (même nom, sans tenir compte des majuscules ni des espaces autour) ; `Actions_reunion.Projet` reprend le projet de la réunion (si `Reunions.Projet` existe). Ce sont des colonnes calculées par Grist : le texte saisi est gardé, une case vide signale un nom absent de l'annuaire ou écrit autrement, et supprimer une de ces colonnes ne perd aucune donnée. Le champ Participants, qui contient plusieurs noms, n'est pas relié.
 
 ## Espaces clés en main
 
