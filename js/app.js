@@ -925,6 +925,8 @@
     if (aTablePublics()) {
       r.push({ table: T_PUBLICS, cols: 'Reunion,Titre,Description,Type,Duree,Porteur,Nom,Envoye_le', formule: NP, droits: '-U',
         memo: 'Le contenu d\'une proposition reçue par formulaire ne se modifie pas.', effet: 'le contenu d\'une proposition reçue par formulaire ne se modifie pas (sauf propriétaires)' });
+      if (aColonne(T_PUBLICS, 'Animation_email')) r.push({ table: T_PUBLICS, cols: 'Suite,Point', formule: NP + ' and not ' + ANIME('rec'), droits: '-U',
+        memo: 'Seule la personne qui anime reprend ou écarte une proposition reçue par formulaire.', effet: 'seule la personne qui anime reprend ou écarte une proposition reçue par formulaire' });
       r.push({ table: T_PUBLICS, cols: '*', formule: NP, droits: '-D', memo: 'Seuls les propriétaires retirent une proposition reçue par formulaire.',
         effet: 'seuls les propriétaires retirent une proposition reçue par formulaire' });
       r.push({ table: T_PUBLICS, cols: '*', formule: 'not user.IsLoggedIn', droits: '-R', memo: 'Les propositions reçues par formulaire ne sont pas lisibles sans compte.',
@@ -942,7 +944,9 @@
     { table: 'Reunions', col: 'Animation_email', type: 'Text', cible: 'Personnes', source: 'Animation', requis: [['Personnes', 'Email']],
       formule: F_EMAIL_ANIMATION, effet: 'adresse de la personne qui anime, si son nom ne correspond qu\'à une seule fiche : sert aux règles qui lui réservent l\'ordre du jour' },
     { table: 'Points', col: 'Animation_email', type: 'Text', cible: 'Personnes', source: 'Reunion', requis: [['Personnes', 'Email']],
-      formule: 'return $Reunion.Animation_email if $Reunion else ""', effet: 'reprend l\'adresse de la personne qui anime la réunion du point (pour les règles d\'accès)' }].filter(Boolean);
+      formule: 'return $Reunion.Animation_email if $Reunion else ""', effet: 'reprend l\'adresse de la personne qui anime la réunion du point (pour les règles d\'accès)' },
+    { table: T_PUBLICS, col: 'Animation_email', type: 'Text', cible: 'Personnes', source: 'Reunion', requis: [['Personnes', 'Email']],
+      formule: 'return $Reunion.Animation_email if $Reunion else ""', effet: 'reprend l\'adresse de la personne qui anime la réunion visée par une proposition reçue par formulaire (pour les règles d\'accès)' }].filter(Boolean);
   var aclDonnees = null;
   function optionsDonnees() { return { demo: DEMO, tables: TABLES.concat(aTablePublics() ? [T_PUBLICS] : []), partage: PARTAGE, regles: reglesAcces(), anciens: ANCIENS_MEMOS, liens: LIENS, noteRegles: NOTE_REGLES }; }
   function rendreDonnees(zone) {
