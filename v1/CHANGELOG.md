@@ -2,6 +2,9 @@
 
 Les adresses `/v1/` ne changent pas : chaque version ajoute ou corrige, sans retirer ce qui existe.
 
+## 2026-11-28 (fichier partagé des données)
+- Fichier partagé `commun/donnees.js` mis à jour (identique dans grist-management, grist-reunion et grist-consultation) : il sait poser un attribut d'utilisateur (par exemple la fiche de la personne connectée) avec les règles d'accès proposées. Rien ne change pour cet outil.
+
 ## 2026-11-28 (statut de l'éditeur)
 - Barre de l'éditeur : le statut affiche « Non enregistré » (au lieu de « Modifications non enregistrées »), plus court ; la barre ne passe plus sur deux lignes sur un écran étroit.
 
